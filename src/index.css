@@ -1,13 +1,24 @@
 @import "tailwindcss";
 
+@theme {
+  --color-ocl-primary: #002244;
+  --color-ocl-secondary: #003366;
+  --color-ocl-accent: #00aaff;
+  --color-zinc-950: #050505;
+  --color-zinc-900: #0a0a0a;
+  
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+}
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #0a0a0a;
+  color-scheme: light;
+  color: #f8fafc;
+  background-color: var(--color-zinc-950);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -17,12 +28,46 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 #root {
   width: 100%;
+}
+
+.page-transition {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ocl-card {
+  background-color: var(--color-zinc-900);
+  border: 1px solid #1e293b;
+  border-radius: var(--radius-xl);
+  transition: all 0.2s ease;
+}
+
+.ocl-card:hover {
+  border-color: var(--color-ocl-accent);
+}
+
+.ocl-button {
+  background-color: var(--color-ocl-primary);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.ocl-button:hover {
+  background-color: var(--color-ocl-secondary);
+  transform: translateY(-1px);
 }

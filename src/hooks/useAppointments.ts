@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { appointmentService } from '../services/appointmentService';
 import type { Appointment } from '../services/appointmentService';
-import { supabase } from '../api/supabase';
 
 export const useAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -11,11 +10,7 @@ export const useAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const { data, error: fetchError } = await supabase
-        .from('appointments')
-        .select('*');
-      
-      if (fetchError) throw fetchError;
+      const data = await appointmentService.fetchAllAppointments();
       setAppointments(data || []);
     } catch (err: any) {
       setError(err.message);
@@ -47,6 +42,16 @@ export const useAppointments = () => {
     }
   };
 
+  const deleteAppointment = async (id: string) => {
+    try {
+      await appointmentService.deleteAppointment(id);
+      setAppointments((prev) => prev.filter((app) => app.id !== id));
+    } catch (err: any) {
+      setError(err.message);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchAppointments();
   }, []);
@@ -57,6 +62,7 @@ export const useAppointments = () => {
     error,
     createAppointment,
     updateStatus,
+    deleteAppointment,
     refreshAppointments: fetchAppointments
   };
 };
