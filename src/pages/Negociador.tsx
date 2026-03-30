@@ -3,22 +3,21 @@ import { useAppointments } from '../hooks/useAppointments';
 import { useSocket } from '../hooks/useSocket';
 import { appointmentService } from '../services/appointmentService';
 import { NotificationModal } from '../components/NotificationModal';
+import { BookingFormModal } from '../components/BookingFormModal';
+import type { BookingFormData } from '../components/BookingFormModal';
 import { User, CheckCircle2, Loader2, Sun, Sunset } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Negociador = () => {
   const { createAppointment } = useAppointments();
   const { socket } = useSocket();
-  
+
   const getAllowedDays = () => {
     const days = [];
     let current = new Date();
-    
-    // Inicia a partir de hoje
-    // Encontra os próximos 3 dias úteis
     while (days.length < 3) {
       const dayOfWeek = current.getUTCDay();
-      if (dayOfWeek !== 0) { // Pula apenas Domingo
+      if (dayOfWeek !== 0) {
         days.push(new Date(current));
       }
       current.setDate(current.getDate() + 1);
@@ -31,7 +30,8 @@ const Negociador = () => {
   const [slots, setSlots] = useState<any[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
-  const [modalConfig, setModalConfig] = useState({
+  const [showFormModal, setShowFormModal] = useState(false);
+  const [notifModal, setNotifModal] = useState({
     isOpen: false,
     type: 'success' as 'success' | 'error',
     title: '',
@@ -74,9 +74,10 @@ const Negociador = () => {
   const morningSlots = useMemo(() => slots.filter(s => parseInt(s.time.split(':')[0]) < 12), [slots]);
   const afternoonSlots = useMemo(() => slots.filter(s => parseInt(s.time.split(':')[0]) >= 12), [slots]);
 
-  const handleBooking = async () => {
+  // Abre o modal de formulário após selecionar o horário
+  const handleConfirmClick = () => {
     if (!selectedSlot) {
-      setModalConfig({
+      setNotifModal({
         isOpen: true,
         type: 'error',
         title: 'Atenção',
@@ -84,53 +85,49 @@ const Negociador = () => {
       });
       return;
     }
+    setShowFormModal(true);
+  };
 
-    try {
-      // Criar a data corretamente considerando o fuso local
-      const [year, month, day] = selectedDate.split('-').map(Number);
-      const [hour, minute] = selectedSlot.time.split(':').map(Number);
-      const dateObj = new Date(year, month - 1, day, hour, minute);
+  // Chamado pelo modal após preencher o formulário e validar
+  const handleFormConfirm = async (formData: BookingFormData) => {
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const [hour, minute] = selectedSlot.time.split(':').map(Number);
+    const dateObj = new Date(year, month - 1, day, hour, minute);
 
-      const appointment = {
-        contract: 'CTR-' + Math.floor(Math.random() * 1000000),
-        phone: '11999999999',
-        responsible_type: 'Titular',
-        responsible_name: 'Cliente Simulado',
-        agreed_values: '1.500,00',
-        appointment_date: dateObj.toISOString(),
-        operador_id: selectedSlot.operatorId,
-        status: 'Pendente'
-      };
-      
-      await createAppointment(appointment);
-      setModalConfig({
-        isOpen: true,
-        type: 'success',
-        title: 'Sucesso!',
-        message: 'Seu agendamento foi realizado com sucesso!'
-      });
-      // Slots serão atualizados via socket, mas fazemos fetch imediato também
-      const available = await appointmentService.fetchAvailability(selectedDate);
-      setSlots(available);
-      setSelectedSlot(null);
-    } catch (err: any) {
-      setModalConfig({
-        isOpen: true,
-        type: 'error',
-        title: 'Ops! Algo deu errado',
-        message: err.message || 'Não fomos capazes de realizar o seu agendamento.'
-      });
-    }
+    const appointment = {
+      contract: formData.contract,
+      phone: formData.phone,
+      responsible_type: formData.responsible_type,
+      responsible_name: formData.responsible_name,
+      agreed_values: formData.agreed_values,
+      appointment_date: dateObj.toISOString(),
+      operador_id: selectedSlot.operatorId,
+      status: 'Pendente'
+    };
+
+    await createAppointment(appointment);
+
+    setShowFormModal(false);
+    setNotifModal({
+      isOpen: true,
+      type: 'success',
+      title: 'Agendamento Confirmado!',
+      message: `Seu atendimento está marcado para ${selectedSlot.time} com ${selectedSlot.operatorName}.`
+    });
+
+    // Recarregar slots (socket já faz isso, mas fazemos imediato também)
+    const available = await appointmentService.fetchAvailability(selectedDate);
+    setSlots(available);
+    setSelectedSlot(null);
   };
 
   return (
     <div className="min-h-screen p-8 bg-brand-bg text-brand-text">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-4xl mx-auto pt-10"
       >
-        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="space-y-6">
             <div className="ocl-card p-6 border-l-4 border-l-brand-accent">
@@ -142,7 +139,7 @@ const Negociador = () => {
                   {currentMonth}
                 </span>
               </div>
-              
+
               <div className="grid grid-cols-3 gap-3">
                 {allowedDays.map((dateObj) => {
                   const dateStr = dateObj.toISOString().split('T')[0];
@@ -152,9 +149,9 @@ const Negociador = () => {
                       key={dateStr}
                       onClick={() => setSelectedDate(dateStr)}
                       className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-1 ${
-                        isActive 
-                        ? 'bg-ocl-primary border-ocl-primary text-white shadow-xl shadow-ocl-primary/20 scale-[1.05]' 
-                        : 'bg-white border-ocl-primary/5 text-ocl-primary hover:border-brand-accent/30'
+                        isActive
+                          ? 'bg-ocl-primary border-ocl-primary text-white shadow-xl shadow-ocl-primary/20 scale-[1.05]'
+                          : 'bg-white border-ocl-primary/5 text-ocl-primary hover:border-brand-accent/30'
                       }`}
                     >
                       <span className={`text-[9px] font-black uppercase ${isActive ? 'text-white/40' : 'text-brand-text/30'}`}>
@@ -173,7 +170,7 @@ const Negociador = () => {
               <label className="block text-sm font-bold text-brand-text/50 uppercase tracking-wider mb-6 border-b border-ocl-primary/5 pb-2">
                 2. Horários Disponíveis
               </label>
-              
+
               {loadingSlots ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <Loader2 className="w-8 h-8 text-brand-accent animate-spin" />
@@ -196,8 +193,8 @@ const Negociador = () => {
                             onClick={() => setSelectedSlot(slot)}
                             className={`p-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
                               selectedSlot?.time === slot.time && selectedSlot?.operatorId === slot.operatorId
-                              ? 'bg-brand-accent border-brand-accent text-white scale-95 shadow-lg shadow-brand-accent/20' 
-                              : 'bg-white border-ocl-primary/10 text-ocl-primary hover:border-brand-accent hover:bg-brand-accent/5'
+                                ? 'bg-brand-accent border-brand-accent text-white scale-95 shadow-lg shadow-brand-accent/20'
+                                : 'bg-white border-ocl-primary/10 text-ocl-primary hover:border-brand-accent hover:bg-brand-accent/5'
                             }`}
                           >
                             {slot.time}
@@ -219,8 +216,8 @@ const Negociador = () => {
                             onClick={() => setSelectedSlot(slot)}
                             className={`p-2.5 rounded-xl text-xs font-bold transition-all border shadow-sm ${
                               selectedSlot?.time === slot.time && selectedSlot?.operatorId === slot.operatorId
-                              ? 'bg-brand-accent border-brand-accent text-white scale-95 shadow-lg shadow-brand-accent/20' 
-                              : 'bg-white border-ocl-primary/10 text-ocl-primary hover:border-brand-accent hover:bg-brand-accent/5'
+                                ? 'bg-brand-accent border-brand-accent text-white scale-95 shadow-lg shadow-brand-accent/20'
+                                : 'bg-white border-ocl-primary/10 text-ocl-primary hover:border-brand-accent hover:bg-brand-accent/5'
                             }`}
                           >
                             {slot.time}
@@ -236,21 +233,23 @@ const Negociador = () => {
 
           <div className="space-y-6">
             <div className="ocl-card p-8 bg-ocl-primary/5 border-ocl-primary/10 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-accent/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-brand-accent/5 rounded-full -mr-16 -mt-16 blur-3xl" />
               <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-ocl-primary">
                 <CheckCircle2 className="w-6 h-6 text-brand-accent" />
                 Resumo
               </h2>
-              
+
               <div className="space-y-4 mb-8">
                 <div className="p-4 rounded-xl bg-white border border-ocl-primary/5 shadow-sm">
                   <p className="text-[10px] text-brand-text/40 uppercase font-black tracking-widest mb-1">Data do Agendamento</p>
-                  <p className="text-lg font-bold text-ocl-primary">{new Date(selectedDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}</p>
+                  <p className="text-lg font-bold text-ocl-primary">
+                    {new Date(selectedDate).toLocaleDateString('pt-BR', { timeZone: 'UTC' })}
+                  </p>
                 </div>
 
                 <AnimatePresence mode="wait">
                   {selectedSlot ? (
-                    <motion.div 
+                    <motion.div
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
@@ -275,8 +274,8 @@ const Negociador = () => {
                 </AnimatePresence>
               </div>
 
-              <button 
-                onClick={handleBooking}
+              <button
+                onClick={handleConfirmClick}
                 disabled={!selectedSlot || loadingSlots}
                 className="ocl-button w-full disabled:opacity-50 disabled:grayscale transition-all py-4 text-md font-black uppercase tracking-widest shadow-xl shadow-brand-accent/10 hover:shadow-brand-accent/30"
               >
@@ -301,9 +300,18 @@ const Negociador = () => {
         </div>
       </motion.div>
 
+      {/* Modal de formulário de agendamento */}
+      <BookingFormModal
+        isOpen={showFormModal}
+        selectedDate={selectedDate}
+        selectedSlot={selectedSlot}
+        onClose={() => setShowFormModal(false)}
+        onConfirm={handleFormConfirm}
+      />
+
       <NotificationModal
-        {...modalConfig}
-        onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+        {...notifModal}
+        onClose={() => setNotifModal({ ...notifModal, isOpen: false })}
       />
     </div>
   );

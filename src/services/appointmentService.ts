@@ -65,5 +65,19 @@ export const appointmentService = {
       throw new Error(errorData.error || 'Erro ao excluir agendamento');
     }
     return response.json();
+  },
+
+  async rescheduleAppointment(id: string, appointment_date: string, operador_id?: string | null) {
+    const response = await fetch(`${API_URL}/agendamento/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appointment_date, operador_id }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erro ao reagendar agendamento');
+    }
+    return response.json();
   }
 };

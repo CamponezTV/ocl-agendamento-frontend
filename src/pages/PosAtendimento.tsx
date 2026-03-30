@@ -3,9 +3,13 @@ import { useAppointments } from '../hooks/useAppointments';
 import { useSocket } from '../hooks/useSocket';
 import type { Operator, OperatorSchedule } from '../services/operatorService';
 import { operatorService } from '../services/operatorService';
+import { appointmentService } from '../services/appointmentService';
+import type { Appointment } from '../services/appointmentService';
 import { NotificationModal } from '../components/NotificationModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
-import { Save, User, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Power, Calendar as CalendarIcon, UserPlus, Edit2, Plus, X } from 'lucide-react';
+import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal';
+import { RescheduleModal } from '../components/RescheduleModal';
+import { Save, User, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Power, Calendar as CalendarIcon, UserPlus, Edit2, Plus, X, Eye, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const PosAtendimento = () => {
@@ -31,6 +35,9 @@ const PosAtendimento = () => {
   // Modal States
   const [notifModal, setNotifModal] = useState({ isOpen: false, type: 'success' as 'success' | 'error', title: '', message: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  // Novos estados para modais de detalhe e reagendamento
+  const [detailsApp, setDetailsApp] = useState<Appointment | null>(null);
+  const [rescheduleApp, setRescheduleApp] = useState<Appointment | null>(null);
 
   useEffect(() => {
     loadOperators();
@@ -247,6 +254,23 @@ const PosAtendimento = () => {
     });
   };
 
+  const handleConfirmAppointment = async (app: Appointment) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Confirmar Agendamento',
+      message: `Confirmar o agendamento de ${app.responsible_name} para ${new Date(app.appointment_date).toLocaleString('pt-BR')}?`,
+      onConfirm: async () => {
+        try {
+          await appointmentService.updateAppointmentStatus(app.id, 'Agendado');
+          refreshAppointments();
+          setNotifModal({ isOpen: true, type: 'success', title: 'Confirmado!', message: 'O agendamento foi confirmado com sucesso.' });
+        } catch (err: any) {
+          setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao confirmar.' });
+        }
+      }
+    });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Agendado': return 'bg-brand-success/10 text-brand-success border-brand-success/20';
@@ -350,7 +374,44 @@ const PosAtendimento = () => {
                               </span>
                             </td>
                             <td className="p-5"><span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase border ${getStatusColor(app.status)}`}><Icon className="w-3.5 h-3.5" />{app.status}</span></td>
-                            <td className="p-5 text-right"><button onClick={() => handleDelete(app.id)} className="p-2.5 text-brand-danger bg-brand-danger/10 rounded-xl hover:bg-brand-danger hover:text-white hover:shadow-lg hover:shadow-brand-danger/20 transition-all"><Trash2 className="w-4 h-4" /></button></td>
+                            <td className="p-5 text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {/* Visualizar */}
+                                <button
+                                  onClick={() => setDetailsApp(app)}
+                                  title="Ver detalhes"
+                                  className="p-2.5 text-ocl-primary bg-ocl-primary/5 rounded-xl hover:bg-ocl-primary hover:text-white hover:shadow-lg hover:shadow-ocl-primary/20 transition-all"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                                {/* Reagendar */}
+                                <button
+                                  onClick={() => setRescheduleApp(app)}
+                                  title="Reagendar"
+                                  className="p-2.5 text-brand-accent bg-brand-accent/10 rounded-xl hover:bg-brand-accent hover:text-white hover:shadow-lg hover:shadow-brand-accent/20 transition-all"
+                                >
+                                  <RefreshCw className="w-4 h-4" />
+                                </button>
+                                {/* Confirmar */}
+                                {app.status !== 'Agendado' && app.status !== 'Finalizado' && (
+                                  <button
+                                    onClick={() => handleConfirmAppointment(app)}
+                                    title="Confirmar agendamento"
+                                    className="p-2.5 text-brand-success bg-brand-success/10 rounded-xl hover:bg-brand-success hover:text-white hover:shadow-lg hover:shadow-brand-success/20 transition-all"
+                                  >
+                                    <CheckCircle2 className="w-4 h-4" />
+                                  </button>
+                                )}
+                                {/* Excluir */}
+                                <button
+                                  onClick={() => handleDelete(app.id)}
+                                  title="Excluir"
+                                  className="p-2.5 text-brand-danger bg-brand-danger/10 rounded-xl hover:bg-brand-danger hover:text-white hover:shadow-lg hover:shadow-brand-danger/20 transition-all"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         );
                       })}
@@ -626,6 +687,24 @@ const PosAtendimento = () => {
       <ConfirmationModal
         {...confirmModal}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+      />
+
+      {/* Modal de detalhes */}
+      <AppointmentDetailsModal
+        isOpen={!!detailsApp}
+        appointment={detailsApp}
+        onClose={() => setDetailsApp(null)}
+      />
+
+      {/* Modal de reagendamento */}
+      <RescheduleModal
+        isOpen={!!rescheduleApp}
+        appointment={rescheduleApp}
+        onClose={() => setRescheduleApp(null)}
+        onSuccess={() => {
+          refreshAppointments();
+          setNotifModal({ isOpen: true, type: 'success', title: 'Reagendado!', message: 'O agendamento foi reagendado com sucesso.' });
+        }}
       />
     </div>
   );
