@@ -15,11 +15,10 @@ export interface Appointment {
 }
 
 export const appointmentService = {
-  async fetchAvailableSlots() {
-    const response = await fetch(`${API_URL}/agenda`);
-    if (!response.ok) throw new Error('Erro ao buscar agenda');
-    const data = await response.json();
-    return data;
+  async fetchAvailability(date: string) {
+    const response = await fetch(`${API_URL}/disponibilidade?date=${date}`);
+    if (!response.ok) throw new Error('Erro ao buscar disponibilidade');
+    return response.json();
   },
 
   async saveAppointment(data: Partial<Appointment>) {
