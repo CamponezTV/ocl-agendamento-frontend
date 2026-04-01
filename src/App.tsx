@@ -17,7 +17,7 @@ function App() {
             
             <div className="flex gap-10 h-full">
               {[
-                { path: '/negociador', label: 'Simular' },
+                { path: '/negociador', label: 'Agendamento' },
                 { path: '/pos-atendimento', label: 'Gestão' },
               ].map((link) => (
                 <NavLink 

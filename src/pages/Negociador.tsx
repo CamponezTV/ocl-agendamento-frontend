@@ -15,8 +15,10 @@ const Negociador = () => {
   const getAllowedDays = () => {
     const days = [];
     let current = new Date();
+    
     while (days.length < 3) {
       const dayOfWeek = current.getUTCDay();
+      // Pula Domingos (0)
       if (dayOfWeek !== 0) {
         days.push(new Date(current));
       }
@@ -35,7 +37,8 @@ const Negociador = () => {
     isOpen: false,
     type: 'success' as 'success' | 'error',
     title: '',
-    message: ''
+    message: '',
+    copyText: ''
   });
 
   const currentMonth = new Intl.DateTimeFormat('pt-BR', { month: 'long' }).format(new Date(selectedDate + 'T12:00:00Z'));
@@ -81,7 +84,8 @@ const Negociador = () => {
         isOpen: true,
         type: 'error',
         title: 'Atenção',
-        message: 'Por favor, selecione um horário antes de confirmar.'
+        message: 'Por favor, selecione um horário antes de confirmar.',
+        copyText: ''
       });
       return;
     }
@@ -90,35 +94,59 @@ const Negociador = () => {
 
   // Chamado pelo modal após preencher o formulário e validar
   const handleFormConfirm = async (formData: BookingFormData) => {
-    const [year, month, day] = selectedDate.split('-').map(Number);
-    const [hour, minute] = selectedSlot.time.split(':').map(Number);
-    const dateObj = new Date(year, month - 1, day, hour, minute);
+    try {
+      const [year, month, day] = selectedDate.split('-').map(Number);
+      const [hour, minute] = selectedSlot.time.split(':').map(Number);
+      const dateObj = new Date(year, month - 1, day, hour, minute);
 
-    const appointment = {
-      contract: formData.contract,
-      phone: formData.phone,
-      responsible_type: formData.responsible_type,
-      responsible_name: formData.responsible_name,
-      agreed_values: formData.agreed_values,
-      appointment_date: dateObj.toISOString(),
-      operador_id: selectedSlot.operatorId,
-      status: 'Pendente'
-    };
+      const appointment = {
+        contract: formData.contract,
+        phone: formData.phone,
+        responsible_type: formData.responsible_type,
+        responsible_name: formData.responsible_name,
+        recovery_name: formData.recovery_name,
+        agreed_values: formData.agreed_values,
+        appointment_date: dateObj.toISOString(),
+        operador_id: selectedSlot.operatorId,
+        status: 'Pendente'
+      };
 
-    await createAppointment(appointment);
+      await createAppointment(appointment);
 
-    setShowFormModal(false);
-    setNotifModal({
-      isOpen: true,
-      type: 'success',
-      title: 'Agendamento Confirmado!',
-      message: `Seu atendimento está marcado para ${selectedSlot.time} com ${selectedSlot.operatorName}.`
-    });
+      setShowFormModal(false);
+      const copySummary = `RESUMO DO AGENDAMENTO
+Contrato: ${formData.contract}
+Data: ${new Date(dateObj).toLocaleDateString('pt-BR')} às ${selectedSlot.time}
+Responsável: ${formData.responsible_name} (${formData.responsible_type})
+Recuperador: ${formData.recovery_name}
+Telefone: ${formData.phone}
+Valores: ${formData.agreed_values}
+Atendente: ${selectedSlot.operatorName}`;
 
-    // Recarregar slots (socket já faz isso, mas fazemos imediato também)
-    const available = await appointmentService.fetchAvailability(selectedDate);
-    setSlots(available);
-    setSelectedSlot(null);
+      setNotifModal({
+        isOpen: true,
+        type: 'success',
+        title: 'Agendamento Confirmado!',
+        message: `Seu atendimento está marcado para ${selectedSlot.time} com ${selectedSlot.operatorName}.`,
+        copyText: copySummary
+      });
+
+      // Recarregar slots (socket já faz isso, mas fazemos imediato também)
+      const available = await appointmentService.fetchAvailability(selectedDate);
+      setSlots(available);
+      setSelectedSlot(null);
+    } catch (err: any) {
+      console.error('[Create] Erro ao criar agendamento:', err);
+      // Mantém o modal aberto para o usuário ver o erro ou tentar novamente se fizer sentido
+      // (No caso de erro 30min, o slot vai sumir no próximo refresh automático via socket)
+      setNotifModal({
+        isOpen: true,
+        type: 'error',
+        title: 'Falha no Agendamento',
+        message: err.message || 'Ocorreu um erro ao tentar realizar o agendamento.',
+        copyText: ''
+      });
+    }
   };
 
   return (
@@ -148,16 +176,16 @@ const Negociador = () => {
                     <button
                       key={dateStr}
                       onClick={() => setSelectedDate(dateStr)}
-                      className={`p-4 rounded-2xl border transition-all flex flex-col items-center gap-1 ${
+                      className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1 ${
                         isActive
                           ? 'bg-ocl-primary border-ocl-primary text-white shadow-xl shadow-ocl-primary/20 scale-[1.05]'
                           : 'bg-white border-ocl-primary/5 text-ocl-primary hover:border-brand-accent/30'
                       }`}
                     >
-                      <span className={`text-[9px] font-black uppercase ${isActive ? 'text-white/40' : 'text-brand-text/30'}`}>
+                      <span className={`text-[8px] font-black uppercase ${isActive ? 'text-white/40' : 'text-brand-text/30'}`}>
                         {dayNamesShort[dateObj.getUTCDay()]}
                       </span>
-                      <span className="text-xl font-black">
+                      <span className="text-lg font-black">
                         {dateObj.getUTCDate()}
                       </span>
                     </button>
@@ -281,20 +309,6 @@ const Negociador = () => {
               >
                 Confirmar Agora
               </button>
-            </div>
-
-            <div className="ocl-card p-6 bg-white border-dashed border-ocl-primary/10">
-              <div className="flex items-start gap-4">
-                <div className="p-2.5 rounded-xl bg-brand-accent/10">
-                  <User className="w-5 h-5 text-brand-accent" />
-                </div>
-                <div>
-                  <p className="font-bold text-ocl-primary text-sm">Disponibilidade Real</p>
-                  <p className="text-xs text-brand-text/60 leading-relaxed mt-1 font-medium">
-                    Os horários acima são sincronizados em tempo real com a escala ativa dos Pós-atendentes.
-                  </p>
-                </div>
-              </div>
             </div>
           </div>
         </div>

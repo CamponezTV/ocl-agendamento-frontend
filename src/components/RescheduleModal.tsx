@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, User, Loader2, RefreshCw } from 'lucide-react';
 import { appointmentService } from '../services/appointmentService';
 import { operatorService } from '../services/operatorService';
 import type { Appointment } from '../services/appointmentService';
 import type { Operator } from '../services/operatorService';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface Props {
   isOpen: boolean;
@@ -27,6 +28,7 @@ const getNext30Days = () => {
 };
 
 export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Props) => {
+  useBodyScrollLock(isOpen);
   const [selectedDate, setSelectedDate] = useState('');
   const [slots, setSlots] = useState<any[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
@@ -36,6 +38,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
+  const constraintsRef = useRef<HTMLDivElement>(null);
   const next30Days = getNext30Days();
 
   // Pré-selecionar data atual do agendamento
@@ -134,8 +137,8 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            {/* Accent */}
-            <div className="h-1.5 w-full bg-gradient-to-r from-brand-accent via-ocl-primary to-brand-accent shrink-0" />
+            {/* Header accent bar */}
+            <div className="h-1.5 w-full bg-gradient-to-r from-ocl-primary via-brand-accent to-ocl-primary shrink-0" />
 
             {/* Header */}
             <div className="flex items-start justify-between p-8 pb-4 shrink-0">
@@ -156,24 +159,65 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
             </div>
 
             {/* Scrollable body */}
-            <div className="overflow-y-auto px-8 pb-8 space-y-6">
-
-              {/* Data */}
-              <div>
-                <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-3">
-                  <Calendar className="w-3 h-3" /> Nova Data
+            <div className="overflow-y-auto overflow-x-hidden px-8 pb-8 space-y-6 custom-scrollbar">
+              {/* Data Strip Container */}
+              <div className="relative -mx-8 pt-4">
+                <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2 px-8">
+                  <Calendar className="w-3 h-3" /> Selecione a Nova Data
                 </label>
-                <select
-                  value={selectedDate}
-                  onChange={e => setSelectedDate(e.target.value)}
-                  className="w-full bg-brand-bg border border-ocl-primary/10 rounded-2xl px-5 py-3.5 text-sm font-bold text-ocl-primary outline-none focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent appearance-none transition-all"
+                
+                {/* Modern CSS Mask for Fade Edge - Eliminates 'flash' overlays */}
+                <div 
+                  className="relative select-none overflow-hidden"
+                  ref={constraintsRef}
+                  style={{ 
+                    cursor: 'grab',
+                    maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)'
+                  }}
+                  onMouseDown={(e) => (e.currentTarget.style.cursor = 'grabbing')}
+                  onMouseUp={(e) => (e.currentTarget.style.cursor = 'grab')}
                 >
-                  {next30Days.map(date => (
-                    <option key={date} value={date}>
-                      {new Date(date + 'T12:00:00Z').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-                    </option>
-                  ))}
-                </select>
+                  <motion.div 
+                    drag="x"
+                    dragConstraints={constraintsRef}
+                    dragElastic={0.15}
+                    dragTransition={{ bounceStiffness: 600, bounceDamping: 20 }}
+                    className="flex gap-4 w-max px-12 py-8" // Increased vertical padding for shadows
+                  >
+                    {next30Days.map(date => {
+                      const dateObj = new Date(date + 'T12:00:00Z');
+                      const dayName = dateObj.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+                      const dayNum = dateObj.toLocaleDateString('pt-BR', { day: '2-digit' });
+                      const monthName = dateObj.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+                      const isActive = selectedDate === date;
+
+                      return (
+                        <motion.button
+                          key={date}
+                          onTap={() => setSelectedDate(date)}
+                          whileHover={{ y: -2 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`flex-shrink-0 w-[78px] py-5 rounded-[2.2rem] border transition-all flex flex-col items-center gap-2 pointer-events-auto ${
+                            isActive
+                              ? 'bg-ocl-primary border-ocl-primary text-white shadow-[0_20px_40px_-12px_rgba(0,51,102,0.4)] scale-[1.12] z-20'
+                              : 'bg-white border-ocl-primary/5 text-brand-text/40 hover:border-brand-accent/30 hover:shadow-lg'
+                          }`}
+                        >
+                          <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-white/60' : 'text-brand-text/30'}`}>
+                            {dayName}
+                          </span>
+                          <span className="text-2xl font-black leading-none tracking-tighter">
+                            {dayNum}
+                          </span>
+                          <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-white/40' : 'text-brand-text/20'}`}>
+                            {monthName}
+                          </span>
+                        </motion.button>
+                      );
+                    })}
+                  </motion.div>
+                </div>
               </div>
 
               {/* Slots */}
@@ -288,7 +332,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                     </span>
                   ) : (
                     <span className="flex items-center justify-center gap-2">
-                      <RefreshCw className="w-4 h-4" /> Confirmar Reagendamento
+                      Confirmar Reagendamento
                     </span>
                   )}
                 </button>

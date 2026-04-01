@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAppointments } from '../hooks/useAppointments';
 import { useSocket } from '../hooks/useSocket';
 import type { Operator, OperatorSchedule } from '../services/operatorService';
@@ -9,8 +9,11 @@ import { NotificationModal } from '../components/NotificationModal';
 import { ConfirmationModal } from '../components/ConfirmationModal';
 import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal';
 import { RescheduleModal } from '../components/RescheduleModal';
-import { Save, User, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Power, Calendar as CalendarIcon, UserPlus, Edit2, Plus, X, Eye, RefreshCw, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Save, User, Clock, CheckCircle, XCircle, AlertCircle, Trash2, Power, 
+  UserPlus, Edit2, Eye, RefreshCw, CheckCircle2, ChevronRight, ChevronLeft 
+} from 'lucide-react';
+import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 
 const PosAtendimento = () => {
   const { appointments, deleteAppointment, refreshAppointments, loading: loadingApps } = useAppointments();
@@ -22,26 +25,56 @@ const PosAtendimento = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [newOp, setNewOp] = useState({ name: '', email: '' });
   const [editingOp, setEditingOp] = useState<Operator | null>(null);
-  const [addingSlotTo, setAddingSlotTo] = useState<string | null>(null);
-  const [newSlotData, setNewSlotData] = useState<any>({ 
-    specific_date: new Date().toISOString().split('T')[0], 
-    start_time: '08:20', 
-    end_time: '13:40',
-    is_active: true
-  });
   const [pendingChanges, setPendingChanges] = useState<any[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
   // Modal States
-  const [notifModal, setNotifModal] = useState({ isOpen: false, type: 'success' as 'success' | 'error', title: '', message: '' });
+  const [notifModal, setNotifModal] = useState({ isOpen: false, type: 'success' as 'success' | 'error', title: '', message: '', copyText: '' });
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   // Novos estados para modais de detalhe e reagendamento
   const [detailsApp, setDetailsApp] = useState<Appointment | null>(null);
   const [rescheduleApp, setRescheduleApp] = useState<Appointment | null>(null);
+  
+  const calendarConstraintsRef = useRef<HTMLDivElement>(null);
+  const calendarContentRef = useRef<HTMLDivElement>(null);
+  const calendarX = useMotionValue(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  // Update arrow visibility based on scroll position
+  useEffect(() => {
+    const unsub = calendarX.on('change', (v) => {
+      setCanScrollLeft(v < -20);
+      if (calendarConstraintsRef.current && calendarContentRef.current) {
+        const container = calendarConstraintsRef.current.offsetWidth;
+        const content = calendarContentRef.current.offsetWidth;
+        setCanScrollRight(v > -(content - container) + 20);
+      }
+    });
+    return unsub;
+  }, [calendarX]);
+
+  const scrollCalendar = (direction: 'left' | 'right') => {
+    if (!calendarConstraintsRef.current || !calendarContentRef.current) return;
+    const container = calendarConstraintsRef.current.offsetWidth;
+    const content = calendarContentRef.current.offsetWidth;
+    const maxScroll = -(content - container + 48); // 48 is padding-x
+    
+    let targetX = calendarX.get() + (direction === 'left' ? 300 : -300);
+    if (targetX > 0) targetX = 0;
+    if (targetX < maxScroll) targetX = maxScroll;
+
+    animate(calendarX, targetX, {
+      type: 'spring',
+      stiffness: 300,
+      damping: 30
+    });
+  };
 
   useEffect(() => {
     loadOperators();
-  }, [activeTab]);
+  }, []); // Load only once on mount, not on every tab change
+
 
   // Real-time: recarregar agendamentos quando houver atualização
   useEffect(() => {
@@ -112,19 +145,6 @@ const PosAtendimento = () => {
     }));
   };
 
-  const handleGridDelete = (opId: string, scheduleId: string) => {
-     if (!window.confirm('Remover esta exceção e voltar ao horário padrão deste dia?')) return;
-     
-     setPendingChanges(prev => {
-        if (scheduleId.startsWith('temp-')) return prev.filter(p => !(p.action === 'create' && p.tempId === scheduleId));
-        return [...prev, { action: 'delete', id: scheduleId }];
-     });
-
-     setOperators(prev => prev.map(op => {
-        if (op.id === opId) return { ...op, operator_schedules: op.operator_schedules.filter(s => s.id !== scheduleId) };
-        return op;
-     }));
-  };
 
   const saveBatchUpdate = async () => {
     if (pendingChanges.length === 0) return;
@@ -133,63 +153,90 @@ const PosAtendimento = () => {
       await operatorService.batchUpdateSchedules(pendingChanges);
       setPendingChanges([]);
       await loadOperators();
-      setNotifModal({ isOpen: true, type: 'success', title: 'Atualizado!', message: 'As escalas foram salvas com sucesso.' });
+      setNotifModal({ isOpen: true, type: 'success', title: 'Atualizado!', message: 'As escalas foram salvas com sucesso.', copyText: '' });
     } catch (err) {
-      setNotifModal({ isOpen: true, type: 'error', title: 'Erro ao Salvar', message: 'Não foi possível salvar as alterações de escala.' });
+      setNotifModal({ isOpen: true, type: 'error', title: 'Erro ao Salvar', message: 'Não foi possível salvar as alterações de escala.', copyText: '' });
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleAddSlot = () => {
-    if (!addingSlotTo) return;
-    const date = newSlotData.specific_date;
-    const opId = addingSlotTo;
-    const dObj = new Date(date + 'T12:00:00Z');
-    
-    const op = operators.find(o => o.id === opId);
-    if (!op) return;
-    const specific = op.operator_schedules.find(s => s.specific_date?.startsWith(date));
-    const defaultDay = op.operator_schedules.find(s => s.day_of_week === dObj.getUTCDay() && !s.specific_date);
-    
-    if (specific || defaultDay) {
-       handleGridUpdate(opId, date, dObj.getUTCDay(), specific, defaultDay, 'start_time', newSlotData.start_time);
-       handleGridUpdate(opId, date, dObj.getUTCDay(), specific, defaultDay, 'end_time', newSlotData.end_time);
-       handleGridUpdate(opId, date, dObj.getUTCDay(), specific, defaultDay, 'is_active', newSlotData.is_active || true);
-    } else {
-       const tempId = `temp-${opId}-${date}`;
-       setPendingChanges(prev => [...prev.filter(p => !(p.action === 'create' && p.specific_date === date)), {
-          action: 'create', tempId, operador_id: opId, specific_date: date, start_time: newSlotData.start_time, end_time: newSlotData.end_time, is_active: newSlotData.is_active ?? true, day_of_week: dObj.getUTCDay()
-       }]);
-       setOperators(prev => prev.map(o => {
-          if (o.id !== opId) return o;
-          return { ...o, operator_schedules: [...o.operator_schedules, { id: tempId, operador_id: opId, day_of_week: dObj.getUTCDay(), specific_date: date, start_time: newSlotData.start_time, end_time: newSlotData.end_time, is_active: newSlotData.is_active ?? true }] };
-       }));
-    }
-    setAddingSlotTo(null);
-  };
 
-  const handleToggleAll = async (id: string, currentStatus: boolean) => {
-    // Optimistic Update
-    setOperators(prev => prev.map(op => {
-      if (op.id === id) {
-        return {
-          ...op,
-          operator_schedules: op.operator_schedules.map(s => ({ ...s, is_active: !currentStatus }))
-        };
+  const handleToggleAll = (id: string, currentStatus: boolean) => {
+    const op = operators.find(o => o.id === id);
+    if (!op) return;
+
+    const newStatus = !currentStatus;
+    const newChanges: any[] = [];
+    const tempCreates: any[] = [];
+
+    // Generate exactly 7 changes — one per visible day
+    rolling7Days.forEach(day => {
+      const specific = op.operator_schedules.find(s => s.specific_date?.slice(0, 10) === day.date);
+      const defaultDay = op.operator_schedules.find(s => s.day_of_week === day.dayOfWeek && !s.specific_date);
+      const base = specific || defaultDay;
+      if (!base) return;
+
+      if (specific && !specific.id.startsWith('temp-')) {
+        // Update existing override
+        newChanges.push({
+          action: 'update',
+          id: specific.id,
+          start_time: specific.start_time,
+          end_time: specific.end_time,
+          is_active: newStatus
+        });
+      } else {
+        // Create a new override for this specific day
+        const tempId = `temp-${id}-${day.date}`;
+        newChanges.push({
+          action: 'create',
+          tempId,
+          operador_id: id,
+          specific_date: day.date,
+          day_of_week: day.dayOfWeek,
+          start_time: base.start_time,
+          end_time: base.end_time,
+          is_active: newStatus
+        });
+        tempCreates.push({ tempId, day });
       }
-      return op;
+    });
+
+    // Optimistic UI update
+    setOperators(prev => prev.map(o => {
+      if (o.id !== id) return o;
+      let newSchedules = [...o.operator_schedules];
+      newChanges.forEach(change => {
+        if (change.action === 'update') {
+          newSchedules = newSchedules.map(s => s.id === change.id ? { ...s, is_active: newStatus } : s);
+        } else if (change.action === 'create') {
+          // Replace existing temp or push new
+          const existing = newSchedules.findIndex(s => s.id === change.tempId);
+          const newEntry = { id: change.tempId, operador_id: id, day_of_week: change.day_of_week, specific_date: change.specific_date, start_time: change.start_time, end_time: change.end_time, is_active: newStatus };
+          if (existing !== -1) newSchedules[existing] = newEntry;
+          else newSchedules.push(newEntry);
+        }
+      });
+      return { ...o, operator_schedules: newSchedules };
     }));
 
-    try {
-      await operatorService.toggleAllSchedules(id, !currentStatus);
-      const data = await operatorService.fetchOperators();
-      setOperators(data);
-      setNotifModal({ isOpen: true, type: 'success', title: 'Status Alterado', message: 'O status da escala foi atualizado.' });
-    } catch (err) {
-      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: 'Falha ao atualizar status da escala.' });
-      loadOperators();
-    }
+    // Add to pending changes (merged, no duplicates)
+    setPendingChanges(prev => {
+      let next = [...prev];
+      newChanges.forEach(change => {
+        if (change.action === 'update') {
+          const idx = next.findIndex(p => p.action === 'update' && p.id === change.id);
+          if (idx !== -1) next[idx] = { ...next[idx], ...change };
+          else next.push(change);
+        } else {
+          const idx = next.findIndex(p => p.action === 'create' && p.specific_date === change.specific_date && p.operador_id === id);
+          if (idx !== -1) next[idx] = { ...next[idx], ...change };
+          else next.push(change);
+        }
+      });
+      return next;
+    });
   };
 
   const handleUpdateOperator = async () => {
@@ -198,9 +245,9 @@ const PosAtendimento = () => {
       await operatorService.updateOperator(editingOp.id, { name: editingOp.name || '', email: editingOp.email });
       setShowEditModal(false);
       await loadOperators();
-      setNotifModal({ isOpen: true, type: 'success', title: 'Sucesso', message: 'Atendente atualizado com sucesso.' });
+      setNotifModal({ isOpen: true, type: 'success', title: 'Sucesso', message: 'Atendente atualizado com sucesso.', copyText: '' });
     } catch (err) {
-      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: 'Não foi possível atualizar os dados do atendente.' });
+      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: 'Não foi possível atualizar os dados do atendente.', copyText: '' });
     }
   };
 
@@ -211,10 +258,35 @@ const PosAtendimento = () => {
       setShowAddModal(false);
       setNewOp({ name: '', email: '' });
       await loadOperators();
-      setNotifModal({ isOpen: true, type: 'success', title: 'Criado!', message: 'Novo atendente registrado com sucesso.' });
+      setNotifModal({ isOpen: true, type: 'success', title: 'Criado!', message: 'Novo atendente registrado com sucesso.', copyText: '' });
     } catch (err: any) {
-      setNotifModal({ isOpen: true, type: 'error', title: 'Erro ao Criar', message: err.message || 'Falha ao registrar novo atendente.' });
+      setNotifModal({ isOpen: true, type: 'error', title: 'Erro ao Criar', message: err.message || 'Falha ao registrar novo atendente.', copyText: '' });
     }
+  };
+
+  const handleClearOverrides = (opId: string) => {
+    const op = operators.find(o => o.id === opId);
+    if (!op) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Limpar Exceções',
+      message: `Deseja remover TODAS as alterações manuais de ${op.name || op.email} e restaurar os horários padrão?`,
+      onConfirm: async () => {
+        try {
+          const overrides = op.operator_schedules.filter(s => s.specific_date && !s.id.startsWith('temp-'));
+          if (overrides.length > 0) {
+            const changes = overrides.map(s => ({ action: 'delete', id: s.id }));
+            await operatorService.batchUpdateSchedules(changes);
+          }
+          setPendingChanges(prev => prev.filter(p => p.operador_id !== opId));
+          await loadOperators();
+          setNotifModal({ isOpen: true, type: 'success', title: 'Restaurado!', message: 'Horários padrão restaurados com sucesso.', copyText: '' });
+        } catch (err) {
+          setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: 'Falha ao remover exceções.', copyText: '' });
+        }
+      }
+    });
   };
 
   const toggleDayAvailability = (userId: string, date: string, currentStatus: boolean) => {
@@ -246,9 +318,9 @@ const PosAtendimento = () => {
       onConfirm: async () => {
         try {
           await deleteAppointment(id);
-          setNotifModal({ isOpen: true, type: 'success', title: 'Excluído', message: 'O agendamento foi removido.' });
+          setNotifModal({ isOpen: true, type: 'success', title: 'Excluído', message: 'O agendamento foi removido.', copyText: '' });
         } catch (err: any) {
-          setNotifModal({ isOpen: true, type: 'error', title: 'Erro ao Excluir', message: err.message || 'Falha ao remover agendamento.' });
+          setNotifModal({ isOpen: true, type: 'error', title: 'Erro ao Excluir', message: err.message || 'Falha ao remover agendamento.', copyText: '' });
         }
       }
     });
@@ -263,9 +335,9 @@ const PosAtendimento = () => {
         try {
           await appointmentService.updateAppointmentStatus(app.id, 'Agendado');
           refreshAppointments();
-          setNotifModal({ isOpen: true, type: 'success', title: 'Confirmado!', message: 'O agendamento foi confirmado com sucesso.' });
+          setNotifModal({ isOpen: true, type: 'success', title: 'Confirmado!', message: 'O agendamento foi confirmado com sucesso.', copyText: '' });
         } catch (err: any) {
-          setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao confirmar.' });
+          setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao confirmar.', copyText: '' });
         }
       }
     });
@@ -281,12 +353,30 @@ const PosAtendimento = () => {
     }
   };
 
-  const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const dayNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
   const statusIcons: Record<string, any> = {
     'Agendado': Clock,
     'Pendente': AlertCircle,
     'Finalizado': CheckCircle,
     'Cancelado': XCircle,
+  };
+
+  const getRolling30Days = () => {
+    const dates = [];
+    let current = new Date();
+    while (dates.length < 30) {
+      if (current.getUTCDay() !== 0) { // Pula Domingo
+        dates.push({
+          date: current.toISOString().split('T')[0],
+          dayOfWeek: current.getUTCDay(),
+          label: current.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+            .replace(/\.|\,/g, '')
+            .toUpperCase()
+        });
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
   };
 
   const getRolling7Days = () => {
@@ -298,6 +388,8 @@ const PosAtendimento = () => {
           date: current.toISOString().split('T')[0],
           dayOfWeek: current.getUTCDay(),
           label: current.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })
+            .replace(/\.|\,/g, '')
+            .toUpperCase()
         });
       }
       current.setDate(current.getDate() + 1);
@@ -306,20 +398,8 @@ const PosAtendimento = () => {
   };
 
   const rolling7Days = getRolling7Days();
+  const rolling30Days = getRolling30Days();
 
-  const getNext30Days = () => {
-    const dates = [];
-    let current = new Date();
-    while (dates.length < 30) {
-      if (current.getUTCDay() !== 0) { // Pula Domingo
-        dates.push(current.toISOString().split('T')[0]);
-      }
-      current.setDate(current.getDate() + 1);
-    }
-    return dates;
-  };
-
-  const next30Days = getNext30Days();
 
   return (
     <div className="min-h-screen p-8 bg-brand-bg text-brand-text">
@@ -342,7 +422,7 @@ const PosAtendimento = () => {
             onClick={() => setActiveTab('calendar')}
             className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${activeTab === 'calendar' ? 'bg-ocl-primary text-white shadow-lg' : 'text-brand-text/40 hover:text-ocl-primary'}`}
           >
-            Calendário (D+30)
+            Calendário (30 Dias)
           </button>
           </div>
         </div>
@@ -431,7 +511,13 @@ const PosAtendimento = () => {
                 </button>
               </div>
               {loadingOps ? <div className="p-20 text-center text-brand-text/40">Carregando escalas...</div> : operators.filter(op => op.email.toLowerCase().includes('posatendente')).map(op => {
-                const someActive = op.operator_schedules.some(s => s.day_of_week !== null && s.is_active);
+                // someActive reflects what the 7 visible days are ACTUALLY showing on screen
+                const someActive = rolling7Days.some(day => {
+                  const specific = op.operator_schedules.find(s => s.specific_date?.slice(0, 10) === day.date);
+                  const defaultDay = op.operator_schedules.find(s => s.day_of_week === day.dayOfWeek && !s.specific_date);
+                  const schedule = specific || defaultDay;
+                  return schedule?.is_active ?? false;
+                });
                 return (
                   <div key={op.id} className="ocl-card p-6 space-y-6">
                     <div className="flex items-center justify-between border-b border-ocl-primary/5 pb-4">
@@ -446,6 +532,13 @@ const PosAtendimento = () => {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => handleClearOverrides(op.id)}
+                          className="mr-4 p-2.5 text-brand-text/20 hover:text-brand-danger bg-transparent hover:bg-brand-danger/5 rounded-xl transition-all group"
+                          title="Limpar todas as exceções deste atendente"
+                        >
+                          <Trash2 className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                        </button>
                         <span className="text-[10px] font-black uppercase text-brand-text/30">Escala Geral</span>
                         <button 
                           onClick={() => handleToggleAll(op.id, someActive)}
@@ -456,23 +549,53 @@ const PosAtendimento = () => {
                         </button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 pt-6 px-1">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 pt-6 px-1">
                       {rolling7Days.map(day => {
                         const specific = op.operator_schedules.find(s => s.specific_date?.startsWith(day.date));
                         const defaultDay = op.operator_schedules.find(s => s.day_of_week === day.dayOfWeek && !s.specific_date);
-                        
                         const schedule = specific || defaultDay;
-                        const isRealException = specific && (
-                          specific.start_time !== defaultDay?.start_time || 
-                          specific.end_time !== defaultDay?.end_time || 
-                          specific.is_active !== defaultDay?.is_active
-                        );
+
+                        // Identify operator type for business rules
+                        const lowerEmail = op.email.toLowerCase();
+                        const lowerName = (op.name || '').toLowerCase();
+                        const is01 = lowerName.includes('01') || lowerEmail.includes('01');
+                        const is02 = lowerName.includes('02') || lowerEmail.includes('02');
+                        const is03 = lowerName.includes('03') || lowerEmail.includes('03');
+
+                        // Normalize times for comparison
+                        const sStart = (specific?.start_time || schedule?.start_time || '').slice(0, 5);
+                        const sEnd = (specific?.end_time || schedule?.end_time || '').slice(0, 5);
+                        const isActive = schedule?.is_active ?? false;
+
+                        // Define standard "Not an Exception" conditions
+                        let isStandard = false;
+                        const isWeekend = day.dayOfWeek === 6; // Sábado
+
+                        if (is01) {
+                          // Op 01 Standard Mon-Sat (08:20 - 13:40) & Active
+                          isStandard = sStart === '08:20' && sEnd === '13:40' && isActive;
+                        } else if (is02) {
+                          if (isWeekend) {
+                            // Sat (08:20 - 13:40) & Active
+                            isStandard = sStart === '08:20' && sEnd === '13:40' && isActive;
+                          } else {
+                            // Mon-Fri (12:40 - 18:20) & Active
+                            isStandard = sStart === '12:40' && sEnd === '18:20' && isActive;
+                          }
+                        } else if (is03) {
+                          // Op 03 Standard is Inactive!
+                          isStandard = !isActive;
+                        } else {
+                          // Default fallback logic comparison against database's own default
+                          const dStart = defaultDay?.start_time.slice(0, 5);
+                          const dEnd = defaultDay?.end_time.slice(0, 5);
+                          isStandard = sStart === dStart && sEnd === dEnd && isActive === defaultDay?.is_active;
+                        }
+
+                        const isRealException = !isStandard;
                         
                         return (
                           <div key={day.date} className={`p-4 rounded-xl border transition-all relative group ${schedule?.is_active ? 'bg-white border-ocl-primary/5 shadow-sm' : 'bg-brand-bg border-transparent opacity-40 grayscale shadow-inner'}`}>
-                            {schedule && (
-                              <button onClick={() => handleGridDelete(op.id, schedule.id)} className="absolute -top-3 -right-2 p-1.5 bg-brand-danger text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"><X className="w-2.5 h-2.5" /></button>
-                            )}
                             <div className="flex justify-between items-center mb-3">
                               <div className="flex flex-col">
                                 <span className="text-[10px] font-black uppercase tracking-widest text-brand-text/30">{day.label}</span>
@@ -493,13 +616,6 @@ const PosAtendimento = () => {
                           </div>
                         );
                       })}
-                      <button 
-                        onClick={() => setAddingSlotTo(op.id)}
-                        className="rounded-xl border-2 border-dashed border-ocl-primary/10 flex flex-col items-center justify-center text-brand-text/20 hover:text-brand-accent hover:border-brand-accent/30 transition-all group min-h-[120px]"
-                      >
-                        <Plus className="w-6 h-6 mb-1 group-hover:scale-110 transition-transform" />
-                        <span className="text-[10px] font-black uppercase">Novo</span>
-                      </button>
                     </div>
                   </div>
                 );
@@ -511,20 +627,66 @@ const PosAtendimento = () => {
             <motion.div key="calendar" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <div className="ocl-card p-6 overflow-hidden bg-white/40 backdrop-blur-md">
                 <div className="flex items-center justify-between mb-8">
-                   <h3 className="text-2xl font-black text-ocl-primary flex items-center gap-3"><CalendarIcon className="w-8 h-8 text-brand-accent" /> Calendário de Disponibilidade</h3>
+                   <h3 className="text-2xl font-black text-ocl-primary flex items-center gap-3"> Calendário de Disponibilidade</h3>
                    <div className="flex items-center gap-6">
                       <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-success shadow-sm shadow-brand-success/20"></div><span className="text-[10px] font-black uppercase text-brand-text/40 tracking-wider">Ativo</span></div>
                       <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-brand-danger shadow-sm shadow-brand-danger/20"></div><span className="text-[10px] font-black uppercase text-brand-text/40 tracking-wider">Bloqueado</span></div>
                    </div>
                 </div>
                 
-                <div className="overflow-x-auto">
-                   <div className="flex gap-4 pb-6 min-w-max">
-                      {next30Days.map(date => {
+                <div className="relative -mx-6">
+                  <div 
+                    className="relative select-none overflow-hidden"
+                    ref={calendarConstraintsRef}
+                    style={{ 
+                      cursor: 'grab',
+                      maskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)',
+                      WebkitMaskImage: 'linear-gradient(to right, transparent, black 5%, black 95%, transparent)'
+                    }}
+                    onMouseDown={(e) => (e.currentTarget.style.cursor = 'grabbing')}
+                    onMouseUp={(e) => (e.currentTarget.style.cursor = 'grab')}
+                  >
+                    {/* Arrow Indicators (Fixed position, outside draggable content) */}
+                    <AnimatePresence>
+                      {canScrollLeft && (
+                        <motion.button 
+                          initial={{ opacity: 0, x: 10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 10 }}
+                          onClick={(e) => { e.stopPropagation(); scrollCalendar('left'); }}
+                          className="absolute left-6 top-1/2 -translate-y-1/2 z-[100] bg-white/95 backdrop-blur-md p-3 rounded-full shadow-2xl border border-ocl-primary/10 text-ocl-primary hover:bg-ocl-primary hover:text-white transition-all active:scale-90 pointer-events-auto"
+                        >
+                          <ChevronLeft className="w-6 h-6" />
+                        </motion.button>
+                      )}
+                      {canScrollRight && (
+                        <motion.button 
+                          initial={{ opacity: 0, x: -10 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          onClick={(e) => { e.stopPropagation(); scrollCalendar('right'); }}
+                          className="absolute right-6 top-1/2 -translate-y-1/2 z-[100] bg-white/95 backdrop-blur-md p-3 rounded-full shadow-2xl border border-ocl-primary/10 text-ocl-primary hover:bg-ocl-primary hover:text-white transition-all active:scale-90 animate-pulse-slow pointer-events-auto"
+                        >
+                          <ChevronRight className="w-6 h-6" />
+                        </motion.button>
+                      )}
+                    </AnimatePresence>
+
+                    <motion.div 
+                      ref={calendarContentRef}
+                      drag="x"
+                      dragConstraints={calendarConstraintsRef}
+                      style={{ x: calendarX }}
+                      dragElastic={0.1}
+                      className="flex gap-4 px-12 py-6 w-max"
+                    >
+
+                      {rolling30Days.map(dayInfo => {
+                        const date = dayInfo.date;
                         const d = new Date(date + 'T12:00:00Z');
                         const isToday = new Date().toISOString().split('T')[0] === date;
                         return (
-                          <div key={date} className={`w-40 flex-shrink-0 space-y-3 rounded-3xl p-4 transition-all ${isToday ? 'bg-ocl-primary shadow-2xl shadow-ocl-primary/30 ring-4 ring-ocl-primary/10' : 'bg-white border border-ocl-primary/5 shadow-sm'}`}>
+                          <div key={date} className={`w-40 flex-shrink-0 space-y-3 rounded-3xl p-4 transition-all ${isToday ? 'bg-ocl-primary shadow-md shadow-ocl-primary/20 ring-2 ring-ocl-primary/10' : 'bg-white border border-ocl-primary/5 shadow-sm'}`}>
                              <div className="text-center pb-3 border-b border-ocl-primary/5">
                                 <p className={`text-[10px] font-black uppercase tracking-widest ${isToday ? 'text-white/40' : 'text-brand-text/30'}`}>{dayNames[d.getUTCDay()]}</p>
                                 <p className={`text-2xl font-black ${isToday ? 'text-white' : 'text-ocl-primary'}`}>{d.getUTCDate().toString().padStart(2, '0')}</p>
@@ -537,21 +699,23 @@ const PosAtendimento = () => {
                                    const isActive = exception ? exception.is_active : isActiveByDefault;
                                    
                                    return (
-                                     <button 
+                                     <motion.button 
                                       key={op.id} 
-                                      onClick={() => toggleDayAvailability(op.id, date, isActive)}
-                                      className={`w-full p-2.5 rounded-xl flex items-center justify-between group transition-all ${isActive ? 'bg-brand-success/5 hover:bg-brand-success/10' : 'bg-brand-danger/5 hover:bg-brand-danger/10'}`}
+                                      onTap={() => toggleDayAvailability(op.id, date, isActive)}
+                                      whileTap={{ scale: 0.95 }}
+                                      className={`w-full p-2.5 rounded-xl flex items-center justify-between group transition-all pointer-events-auto ${isActive ? 'bg-brand-success/5 hover:bg-brand-success/10' : 'bg-brand-danger/5 hover:bg-brand-danger/10'}`}
                                      >
                                         <span className={`text-[9px] font-black uppercase whitespace-nowrap truncate mr-2 ${isToday ? 'text-white/60' : 'text-brand-text/50'}`}>{op.name || op.email.split('@')[0]}</span>
                                         <div className={`w-2 h-2 rounded-full shadow-sm group-hover:scale-125 transition-transform ${isActive ? 'bg-brand-success' : 'bg-brand-danger'}`}></div>
-                                     </button>
+                                     </motion.button>
                                    );
                                 })}
                              </div>
                           </div>
                         );
                       })}
-                   </div>
+                    </motion.div>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -598,56 +762,6 @@ const PosAtendimento = () => {
                 <div className="flex gap-4 pt-6">
                   <button onClick={() => setShowEditModal(false)} className="flex-1 py-4 border border-ocl-primary/10 rounded-2xl font-black text-xs uppercase tracking-widest text-brand-text/40 hover:bg-brand-bg transition-all">Sair</button>
                   <button onClick={handleUpdateOperator} className="flex-1 py-4 bg-ocl-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-ocl-primary/20 hover:scale-[1.05] active:scale-[0.95] transition-all">Salvar</button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {addingSlotTo && (
-          <div className="fixed inset-0 bg-ocl-dark/90 backdrop-blur-md z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-10 rounded-3xl max-w-sm w-full shadow-2xl relative overflow-hidden">
-               <div className="absolute top-0 left-0 w-full h-2 bg-brand-accent"></div>
-              <h3 className="text-2xl font-black mb-8 flex items-center gap-3 text-ocl-primary"><Plus className="w-7 h-7" /> Adicionar Horário</h3>
-              <div className="space-y-6">
-                <div>
-                  <label className="text-[10px] font-black text-brand-text/30 uppercase tracking-widest mb-2 block">Selecione a Data (Próximos 30 dias)</label>
-                  <select 
-                    value={newSlotData.specific_date} 
-                    onChange={e => setNewSlotData({...newSlotData, specific_date: e.target.value})}
-                    className="w-full bg-brand-bg border border-ocl-primary/10 rounded-2xl px-5 py-4 text-sm font-bold text-ocl-primary outline-none focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent appearance-none transition-all shadow-inner"
-                  >
-                    {next30Days.map(date => (
-                      <option key={date} value={date}>
-                        {new Date(date + 'T12:00:00Z').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-black text-brand-text/30 uppercase tracking-widest mb-2 flex items-center justify-between">
-                    Status Padrão
-                    <button 
-                      onClick={() => setNewSlotData({...newSlotData, is_active: !newSlotData.is_active})}
-                      className={`w-10 h-5 rounded-full relative transition-all ${newSlotData.is_active ? 'bg-brand-success' : 'bg-brand-text/20'}`}
-                    >
-                      <div className={`w-3.5 h-3.5 bg-white rounded-full absolute top-0.5 transition-all ${newSlotData.is_active ? 'left-6' : 'left-0.5'}`}></div>
-                    </button>
-                  </label>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[10px] font-black text-brand-text/30 uppercase tracking-widest mb-2 block">Início</label>
-                    <input type="text" value={newSlotData.start_time} onChange={e => setNewSlotData({...newSlotData, start_time: e.target.value})} className="w-full bg-brand-bg border border-ocl-primary/10 rounded-2xl px-4 py-4 text-sm font-black text-ocl-primary outline-none focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent transition-all shadow-inner" />
-                  </div>
-                  <div>
-                    <label className="text-[10px] font-black text-brand-text/30 uppercase tracking-widest mb-2 block">Fim</label>
-                    <input type="text" value={newSlotData.end_time} onChange={e => setNewSlotData({...newSlotData, end_time: e.target.value})} className="w-full bg-brand-bg border border-ocl-primary/10 rounded-2xl px-4 py-4 text-sm font-black text-ocl-primary outline-none focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent transition-all shadow-inner" />
-                  </div>
-                </div>
-                <div className="flex gap-4 pt-6">
-                  <button onClick={() => setAddingSlotTo(null)} className="flex-1 py-4 border border-ocl-primary/10 rounded-2xl font-black text-xs uppercase tracking-widest text-brand-text/40 hover:bg-brand-bg transition-all">Sair</button>
-                  <button onClick={handleAddSlot} className="flex-1 py-4 bg-ocl-primary text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-ocl-primary/20 hover:scale-[1.05] active:scale-[0.95] transition-all">Adicionar</button>
                 </div>
               </div>
             </motion.div>
@@ -703,7 +817,7 @@ const PosAtendimento = () => {
         onClose={() => setRescheduleApp(null)}
         onSuccess={() => {
           refreshAppointments();
-          setNotifModal({ isOpen: true, type: 'success', title: 'Reagendado!', message: 'O agendamento foi reagendado com sucesso.' });
+          setNotifModal({ isOpen: true, type: 'success', title: 'Reagendado!', message: 'O agendamento foi reagendado com sucesso.', copyText: '' });
         }}
       />
     </div>

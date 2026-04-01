@@ -8,6 +8,7 @@ export interface Appointment {
   operador_id?: string | null;
   responsible_type: string;
   responsible_name: string;
+  recovery_name: string;
   agreed_values: string;
   appointment_date: string;
   slot_id?: string | null;
