@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, FileText, Phone, User, DollarSign, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useAuth } from '../contexts/AuthContext';
 
 export interface BookingFormData {
   contract: string;
@@ -10,6 +11,7 @@ export interface BookingFormData {
   responsible_name: string;
   recovery_name: string;
   agreed_values: string;
+  negociador_id?: string;
 }
 
 interface BookingFormModalProps {
@@ -38,6 +40,7 @@ const formatPhone = (value: string) => {
 
 export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, onConfirm }: BookingFormModalProps) => {
   useBodyScrollLock(isOpen);
+  const { profile } = useAuth();
   const [form, setForm] = useState<BookingFormData>({
     contract: '',
     phone: '',
@@ -75,16 +78,15 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
     if (!validate()) return;
     setLoading(true);
     try {
-      // For 'Titular', use a placeholder name if not filled
       const dataToSubmit: BookingFormData = {
         ...form,
         responsible_name: form.responsible_type === 'Titular'
           ? ('Titular' as string)
           : form.responsible_name,
         phone: form.phone.replace(/\D/g, ''),
+        negociador_id: profile?.id,
       };
       await onConfirm(dataToSubmit);
-      // Reset on success
       setForm({ contract: '', phone: '', responsible_type: 'Titular', responsible_name: '', recovery_name: '', agreed_values: '' });
       setErrors({});
     } finally {
@@ -110,7 +112,7 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[8000] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && handleClose()}
         >
           <motion.div

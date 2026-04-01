@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, FileText, Phone, User, DollarSign, Calendar, Clock, UserCheck } from 'lucide-react';
+import { X, FileText, Phone, User, DollarSign, Calendar, Clock, UserCheck, Copy, Check } from 'lucide-react';
 import type { Appointment } from '../services/appointmentService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
@@ -23,11 +24,28 @@ const InfoRow = ({ icon: Icon, label, value }: { icon: any; label: string; value
 
 export const AppointmentDetailsModal = ({ isOpen, appointment, onClose }: Props) => {
   useBodyScrollLock(isOpen);
+  const [copied, setCopied] = useState(false);
+
   if (!appointment) return null;
 
   const date = new Date(appointment.appointment_date);
   const formattedDate = date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
   const formattedTime = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  const handleCopy = () => {
+    const text = `DETALHES DO AGENDAMENTO
+Data: ${formattedDate}
+Horário: ${formattedTime}
+Contrato: ${appointment.contract}
+Telefone: ${appointment.phone}
+Responsável: ${appointment.responsible_name} (${appointment.responsible_type})
+Recuperador: ${appointment.recovery_name}
+Valores: R$ ${appointment.agreed_values}`;
+
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <AnimatePresence>
@@ -36,7 +54,7 @@ export const AppointmentDetailsModal = ({ isOpen, appointment, onClose }: Props)
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[8000] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div
@@ -73,12 +91,20 @@ export const AppointmentDetailsModal = ({ isOpen, appointment, onClose }: Props)
               {appointment.responsible_type === 'Terceiro' && (
                 <InfoRow icon={UserCheck} label="Nome do Responsável" value={appointment.responsible_name} />
               )}
+              <InfoRow icon={UserCheck} label="Recuperador" value={appointment.recovery_name} />
               <InfoRow icon={DollarSign} label="Valores Acordados" value={`R$ ${appointment.agreed_values}`} />
 
-              <div className="pt-2">
+              <div className="pt-4 flex gap-3">
+                <button
+                  onClick={handleCopy}
+                  className={`flex-1 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${copied ? 'bg-brand-success text-white' : 'bg-ocl-primary text-white hover:bg-ocl-primary/90 shadow-lg shadow-ocl-primary/20'}`}
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copied ? 'Copiado!' : 'Copiar Dados'}
+                </button>
                 <button
                   onClick={onClose}
-                  className="w-full py-3.5 border border-ocl-primary/10 rounded-2xl font-black text-xs uppercase tracking-widest text-brand-text/40 hover:bg-brand-bg transition-all"
+                  className="flex-1 py-3.5 border border-ocl-primary/10 rounded-2xl font-black text-xs uppercase tracking-widest text-brand-text/40 hover:bg-brand-bg transition-all"
                 >
                   Fechar
                 </button>

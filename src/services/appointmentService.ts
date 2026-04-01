@@ -6,6 +6,7 @@ export interface Appointment {
   phone: string;
   status: string;
   operador_id?: string | null;
+  negociador_id?: string | null;
   responsible_type: string;
   responsible_name: string;
   recovery_name: string;
@@ -13,6 +14,14 @@ export interface Appointment {
   appointment_date: string;
   slot_id?: string | null;
   created_at?: string;
+  users?: {
+    name: string;
+    email: string;
+  } | null;
+  negociador?: {
+    full_name: string;
+    role: string;
+  } | null;
 }
 
 export const appointmentService = {
@@ -50,10 +59,25 @@ export const appointmentService = {
     return response.json();
   },
 
-  async fetchAllAppointments() {
-    const response = await fetch(`${API_URL}/agenda`);
-    if (!response.ok) throw new Error('Erro ao buscar agendamentos');
+  async fetchAppointments(filters?: {
+    status?: string;
+    negociador_id?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<Appointment[]> {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.append(key, value);
+      });
+    }
+    const response = await fetch(`${API_URL}/appointments?${params.toString()}`);
     return response.json();
+  },
+
+  async fetchAllAppointments() {
+    return this.fetchAppointments();
   },
 
   async deleteAppointment(id: string) {

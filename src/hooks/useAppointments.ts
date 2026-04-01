@@ -10,7 +10,7 @@ export const useAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const data = await appointmentService.fetchAllAppointments();
+      const data = await appointmentService.fetchAppointments();
       setAppointments(data || []);
     } catch (err: any) {
       setError(err.message);

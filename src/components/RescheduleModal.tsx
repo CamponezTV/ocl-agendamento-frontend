@@ -127,7 +127,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[8000] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
         >
           <motion.div

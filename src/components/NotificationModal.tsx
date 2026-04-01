@@ -34,7 +34,7 @@ export const NotificationModal = ({ isOpen, onClose, type, title, message, copyT
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[100] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
           <motion.div
