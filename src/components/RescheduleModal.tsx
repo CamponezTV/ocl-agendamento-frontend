@@ -64,7 +64,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
 
   // Carregar slots disponíveis para a data selecionada
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!selectedDate || !isOpen) return;
     const load = async () => {
       setLoadingSlots(true);
       setSelectedSlot(null);
@@ -78,7 +78,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
       }
     };
     load();
-  }, [selectedDate]);
+  }, [selectedDate, isOpen]);
 
   const handleConfirm = async () => {
     if (!appointment) return;

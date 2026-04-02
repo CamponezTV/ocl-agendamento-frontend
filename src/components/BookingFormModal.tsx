@@ -38,6 +38,10 @@ const formatPhone = (value: string) => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
+const formatContract = (value: string) => {
+  return value.replace(/\D/g, '').slice(0, 11); // Somente números e no máximo 11 dígitos
+};
+
 export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, onConfirm }: BookingFormModalProps) => {
   useBodyScrollLock(isOpen);
   const { profile } = useAuth();
@@ -55,7 +59,7 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
   const validate = (): boolean => {
     const newErrors: FieldError = {};
 
-    if (!form.contract.trim()) newErrors.contract = 'Contrato é obrigatório.';
+    if (form.contract.length !== 11) newErrors.contract = 'Contrato deve ter 11 dígitos.';
     
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length !== 11) newErrors.phone = 'Telefone deve ter 11 dígitos.';
@@ -167,9 +171,11 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                   <input
                     id="booking-contract"
                     type="text"
+                    inputMode="numeric"
+                    maxLength={11}
                     value={form.contract}
-                    onChange={e => { setForm(f => ({ ...f, contract: e.target.value })); setErrors(er => ({ ...er, contract: undefined })); }}
-                    placeholder="Ex: CTR-123456"
+                    onChange={e => { setForm(f => ({ ...f, contract: formatContract(e.target.value) })); setErrors(er => ({ ...er, contract: undefined })); }}
+                    placeholder="Contrato (11 dígitos)"
                     className={`w-full bg-brand-bg border rounded-2xl px-5 py-3.5 text-sm font-bold text-ocl-primary placeholder:font-normal placeholder:text-brand-text/30 focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent outline-none transition-all ${errors.contract ? 'border-brand-danger' : 'border-ocl-primary/10'}`}
                   />
                   {errors.contract && (

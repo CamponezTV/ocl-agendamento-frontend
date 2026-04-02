@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,9 +20,18 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      console.log('Tentando login para:', email);
+      let finalEmail = identifier;
+      
+      // Mapeamento inteligente para o seu acesso
+      if (identifier.toLowerCase() === 'arthur') {
+        finalEmail = 'arthurcamponez2020@gmail.com';
+      } else if (!identifier.includes('@')) {
+        finalEmail = `${identifier}@gmail.com`;
+      }
+
+      console.log('Tentando login para:', finalEmail);
       const { data, error: authError } = await supabase.auth.signInWithPassword({
-        email,
+        email: finalEmail,
         password,
       });
 
@@ -80,7 +89,6 @@ const LoginPage: React.FC = () => {
         className="w-full max-w-[420px]"
       >
         <div className="bg-white p-10 md:p-12 rounded-[2rem] shadow-2xl shadow-slate-200/50 space-y-10">
-          {/* Logo */}
           <div className="flex justify-center">
             <img src="/logo.png" alt="OCL" className="h-12 w-auto" />
           </div>
@@ -98,17 +106,17 @@ const LoginPage: React.FC = () => {
             )}
 
             <div className="space-y-5">
-              <div>
-                 <label className="block text-xs font-bold uppercase text-slate-500 mb-1">E-MAIL</label>
-                 <input
-                   type="email"
-                   required
-                   value={email}
-                   onChange={(e) => setEmail(e.target.value)}
-                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base font-normal text-slate-900 outline-none focus:border-[#003366] transition-all placeholder:text-slate-400"
-                   placeholder="usuario@ocl.adv.br"
-                 />
-              </div>
+               <div>
+                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">USUÁRIO</label>
+                  <input
+                    type="text"
+                    required
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base font-normal text-slate-900 outline-none focus:border-[#003366] transition-all placeholder:text-slate-400"
+                    placeholder="Ex: arthur"
+                  />
+               </div>
 
               <div>
                  <label className="block text-xs font-bold uppercase text-slate-500 mb-1">SENHA</label>

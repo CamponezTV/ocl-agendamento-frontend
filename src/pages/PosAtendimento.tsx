@@ -31,6 +31,7 @@ const PosAtendimento = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [negociadorFilter, setNegociadorFilter] = useState('');
+  const [operadorFilter, setOperadorFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
 
   const [loadingOps, setLoadingOps] = useState(false);
@@ -77,11 +78,12 @@ const PosAtendimento = () => {
       
       const matchesStatus = statusFilter === '' || app.status === statusFilter;
       const matchesNegociador = negociadorFilter === '' || app.negociador_id === negociadorFilter;
+      const matchesOperador = operadorFilter === '' || app.operador_id === operadorFilter;
       const matchesDate = dateFilter === '' || app.appointment_date.startsWith(dateFilter);
 
-      return matchesSearch && matchesStatus && matchesNegociador && matchesDate;
+      return matchesSearch && matchesStatus && matchesNegociador && matchesOperador && matchesDate;
     });
-  }, [appointments, searchTerm, statusFilter, negociadorFilter, dateFilter]);
+  }, [appointments, searchTerm, statusFilter, negociadorFilter, operadorFilter, dateFilter]);
 
   const scrollCalendar = (direction: 'left' | 'right') => {
     if (!calendarConstraintsRef.current || !calendarContentRef.current) return;
@@ -325,10 +327,29 @@ const PosAtendimento = () => {
       setShowAddModal(false);
       setNewOp({ name: '', email: '' });
       await loadOperators();
-      setNotifModal({ isOpen: true, type: 'success', title: 'Criado!', message: 'Sucesso.', copyText: '' });
+      setNotifModal({ isOpen: true, type: 'success', title: 'Criado!', message: 'Atendente adicionado com sucesso.', copyText: '' });
     } catch (err: any) {
-      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha.', copyText: '' });
+      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao criar.', copyText: '' });
     }
+  };
+
+  const handleDeleteOperator = async (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Excluir Atendente',
+      message: 'Tem certeza que deseja excluir permanentemente este atendente e todas as suas escalas? Esta ação não pode ser desfeita.',
+      onConfirm: async () => {
+        try {
+          await operatorService.deleteOperator(id);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          await loadOperators();
+          setNotifModal({ isOpen: true, type: 'success', title: 'Excluído', message: 'Atendente removido com sucesso.', copyText: '' });
+        } catch (err: any) {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao excluir.', copyText: '' });
+        }
+      }
+    });
   };
 
   const getRolling30Days = () => {
@@ -417,6 +438,15 @@ const PosAtendimento = () => {
                   />
                 </div>
                 <div className="md:col-span-1">
+                  <PremiumSelect
+                    value={operadorFilter}
+                    onChange={setOperadorFilter}
+                    options={operators.map(op => ({ value: op.id, label: op.name || op.email.split('@')[0] }))}
+                    placeholder="Todos Pós-atendentes"
+                    icon={<UserIcon className="w-4 h-4" />}
+                  />
+                </div>
+                <div className="md:col-span-1">
                   <PremiumDatePicker 
                     value={dateFilter}
                     onChange={setDateFilter}
@@ -426,7 +456,7 @@ const PosAtendimento = () => {
 
                 {/* Clear Filters Button */}
                 <AnimatePresence>
-                  {(searchTerm || statusFilter || dateFilter || negociadorFilter) && (
+                  {(searchTerm || statusFilter || dateFilter || negociadorFilter || operadorFilter) && (
                     <div className="md:col-span-4 flex justify-end">
                       <motion.button
                         initial={{ opacity: 0, x: 20 }}
@@ -437,6 +467,7 @@ const PosAtendimento = () => {
                           setStatusFilter('');
                           setDateFilter('');
                           setNegociadorFilter('');
+                          setOperadorFilter('');
                         }}
                         className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-brand-danger hover:bg-brand-danger/5 rounded-xl transition-all border border-brand-danger/10 shadow-sm"
                       >
@@ -456,15 +487,16 @@ const PosAtendimento = () => {
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Cliente / Contrato</th>
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Agendamento</th>
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Negociador</th>
+                        <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Pós-Atendente</th>
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Estado Atual</th>
                         <th className="p-6 text-right text-[10px] uppercase font-black tracking-[0.2em]">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-ocl-primary/5">
                       {loadingApps ? (
-                        <tr><td colSpan={5} className="p-20 text-center text-brand-text/40 font-medium flex items-center justify-center gap-2 italic"><RefreshCw className="w-4 h-4 animate-spin" /> Sincronizando dados...</td></tr>
+                        <tr><td colSpan={6} className="p-20 text-center text-brand-text/40 font-medium flex items-center justify-center gap-2 italic"><RefreshCw className="w-4 h-4 animate-spin" /> Sincronizando dados...</td></tr>
                       ) : filteredApps.length === 0 ? (
-                        <tr><td colSpan={5} className="p-20 text-center text-brand-text/30 italic font-medium">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>
+                        <tr><td colSpan={6} className="p-20 text-center text-brand-text/30 italic font-medium">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>
                       ) : (
                         filteredApps.map((app) => (
                           <motion.tr 
@@ -486,6 +518,17 @@ const PosAtendimento = () => {
                             <td className="p-6">
                               <span className="text-[10px] font-black uppercase text-ocl-primary/40 leading-none">{app.negociador?.full_name || 'Sistema'}</span>
                               <span className="block text-[8px] font-bold text-brand-text/20 uppercase mt-0.5">Perfil: {app.negociador?.role || 'Não inf.'}</span>
+                            </td>
+                            <td className="p-6">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-ocl-primary/10 flex items-center justify-center">
+                                  <UserIcon className="w-3 h-3 text-ocl-primary/40" />
+                                </div>
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] font-black uppercase text-ocl-primary/70 leading-none">{app.users?.name || app.users?.email?.split('@')[0] || 'Não atribuído'}</span>
+                                  <span className="text-[8px] font-bold text-brand-text/20 uppercase mt-0.5">Pós-atendente</span>
+                                </div>
+                              </div>
                             </td>
                             <td className="p-6">
                               <div className="flex flex-col gap-2">
@@ -549,7 +592,7 @@ const PosAtendimento = () => {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 gap-8">
-                  {operators.filter(op => op.email.toLowerCase().includes('posatendente')).map((op, idx) => (
+                  {operators.map((op, idx) => (
                     <motion.div 
                       key={op.id}
                       initial={{ opacity: 0, y: 30 }}
@@ -570,16 +613,37 @@ const PosAtendimento = () => {
                         <div className="flex items-center gap-3">
                           <button 
                             onClick={() => handleClearOverrides(op.id)} 
+                            className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/5 active:scale-90"
+                            title="Resetar para Escala Padrão"
+                          >
+                            <RotateCcw className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => handleDeleteOperator(op.id)} 
                             className="p-3 bg-white/10 hover:bg-brand-danger text-white rounded-xl transition-all border border-white/5 active:scale-90"
-                            title="Limpar Exceções"
+                            title="Excluir Atendente Permanentemente"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleToggleAll(op.id)} 
-                            className="px-6 py-3 bg-white/10 hover:bg-white text-white hover:text-ocl-primary rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border border-white/10 shadow-lg"
+                            className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border shadow-lg ${
+                              rolling7Days.some(day => {
+                                const specific = op.operator_schedules.find(s => s.specific_date?.startsWith(day.date));
+                                const defaultDay = op.operator_schedules.find(s => s.day_of_week === day.dayOfWeek && !s.specific_date);
+                                const base = specific || defaultDay;
+                                return !base?.is_active;
+                              }) 
+                              ? 'bg-white/10 hover:bg-white text-white hover:text-ocl-primary border-white/10' 
+                              : 'bg-brand-danger text-white border-brand-danger/20 hover:bg-brand-danger/80'
+                            }`}
                           >
-                            Ativar Semana
+                            {rolling7Days.some(day => {
+                              const specific = op.operator_schedules.find(s => s.specific_date?.startsWith(day.date));
+                              const defaultDay = op.operator_schedules.find(s => s.day_of_week === day.dayOfWeek && !s.specific_date);
+                              const base = specific || defaultDay;
+                              return !base?.is_active;
+                            }) ? 'Ativar Semana' : 'Desativar Semana'}
                           </button>
                         </div>
                       </div>
@@ -693,7 +757,7 @@ const PosAtendimento = () => {
                           </div>
 
                           <div className="space-y-2 relative">
-                            {operators.filter(op => op.email.toLowerCase().includes('posatendente')).map(op => {
+                            {operators.map(op => {
                               const exception = op.operator_schedules.find(s => s.specific_date?.startsWith(day.date));
                               const daily = op.operator_schedules.find(s => s.day_of_week === day.dayOfWeek && !s.specific_date);
                               const active = exception ? exception.is_active : (daily?.is_active ?? false);

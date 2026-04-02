@@ -12,7 +12,7 @@ function Navbar() {
 
   const authRoutes = ['/login', '/forgot-password', '/change-password'];
   const isAuthPage = authRoutes.includes(location.pathname);
-  if (loading || (!user && !isAuthPage) || isAuthPage) return null;
+  if (loading || isAuthPage) return null;
 
   return (
     <nav className="p-0 bg-ocl-primary sticky top-0 z-50 shadow-2xl shadow-ocl-primary/20">
@@ -63,25 +63,36 @@ function Navbar() {
         </div>
 
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
-            <div className="w-8 h-8 rounded-xl bg-brand-accent/20 flex items-center justify-center text-brand-accent">
-               <UserIcon className="w-4 h-4" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-[11px] font-black leading-none text-white uppercase tracking-wider">{profile?.full_name}</span>
-              <span className="text-[8px] font-bold leading-none text-white/40 uppercase tracking-widest mt-1">
-                {profile?.role === 'admin' ? 'Administrador' : 'Negociador'}
-              </span>
-            </div>
-          </div>
-          
-          <button 
-            onClick={() => signOut()}
-            className="p-3 text-white/40 hover:text-brand-danger hover:bg-brand-danger/10 rounded-xl transition-all group"
-            title="Sair do Sistema"
-          >
-            <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
-          </button>
+          {user ? (
+            <>
+              <div className="flex items-center gap-3 px-4 py-2 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md">
+                <div className="w-8 h-8 rounded-xl bg-brand-accent/20 flex items-center justify-center text-brand-accent">
+                   <UserIcon className="w-4 h-4" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black leading-none text-white uppercase tracking-wider">{profile?.full_name}</span>
+                  <span className="text-[8px] font-bold leading-none text-white/40 uppercase tracking-widest mt-1">
+                    {profile?.role === 'admin' ? 'Administrador' : 'Negociador'}
+                  </span>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => signOut()}
+                className="p-3 text-white/40 hover:text-brand-danger hover:bg-brand-danger/10 rounded-xl transition-all group"
+                title="Sair do Sistema"
+              >
+                <LogOut className="w-5 h-5 group-hover:scale-110 transition-transform" />
+              </button>
+            </>
+          ) : (
+            <NavLink 
+              to="/login"
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border border-white/10"
+            >
+              Login Gestão
+            </NavLink>
+          )}
         </div>
       </div>
     </nav>
@@ -99,14 +110,7 @@ function AppContent() {
       <main className="page-transition">
         <Routes>
           <Route path="/login" element={<LoginPage />} />
-          <Route 
-            path="/negociador" 
-            element={
-              <PrivateRoute>
-                <Negociador />
-              </PrivateRoute>
-            } 
-          />
+          <Route path="/negociador" element={<Negociador />} />
           <Route 
             path="/pos-atendimento" 
             element={

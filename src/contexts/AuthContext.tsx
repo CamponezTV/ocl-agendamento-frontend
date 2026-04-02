@@ -80,10 +80,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isAdmin = profile?.role === 'admin';
-  const isNegociador = profile?.role === 'negociador';
+  const isNegociador = profile?.role === 'negociador' || (!user && window.location.pathname.startsWith('/negociador'));
+
+  // Perfil padrão para acesso sem login (Negociador Padrão)
+  const effectiveProfile = profile || (!user && window.location.pathname.startsWith('/negociador') ? {
+    id: 'c3ffebad-8866-4f9d-9ffb-6d0ce76159f1',
+    full_name: 'Negociador Padrão',
+    role: 'negociador' as const,
+    created_at: new Date().toISOString()
+  } : null);
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut, isAdmin, isNegociador }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile: effectiveProfile, 
+      loading, 
+      signOut, 
+      isAdmin, 
+      isNegociador 
+    }}>
       {children}
     </AuthContext.Provider>
   );

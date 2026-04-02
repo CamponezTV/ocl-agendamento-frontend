@@ -26,7 +26,7 @@ const Negociador = () => {
   const getAllowedDays = () => {
     const days = [];
     let current = new Date();
-    while (days.length < 3) {
+    while (days.length < 5) {
       const dayOfWeek = current.getUTCDay();
       if (dayOfWeek !== 0) days.push(new Date(current));
       current.setDate(current.getDate() + 1);
@@ -35,11 +35,57 @@ const Negociador = () => {
   };
 
   const allowedDays = useMemo(() => getAllowedDays(), []);
+  
+  const [daysStatus, setDaysStatus] = useState<Record<string, { hasSlots: boolean, loaded: boolean }>>({});
+  
   const [selectedDate, setSelectedDate] = useState(allowedDays[0].toISOString().split('T')[0]);
   const [slots, setSlots] = useState<any[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showFormModal, setShowFormModal] = useState(false);
+
+  const refreshDayStatuses = async () => {
+    const statuses: Record<string, { hasSlots: boolean, loaded: boolean }> = {};
+    await Promise.all(
+      allowedDays.map(async (d) => {
+        const dateStr = d.toISOString().split('T')[0];
+        try {
+          const daySlots = await appointmentService.fetchAvailability(dateStr);
+          statuses[dateStr] = { hasSlots: daySlots.length > 0, loaded: true };
+        } catch {
+          statuses[dateStr] = { hasSlots: false, loaded: true };
+        }
+      })
+    );
+    return statuses;
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    refreshDayStatuses().then((statuses) => {
+      if (isMounted) {
+        setDaysStatus(statuses);
+        
+        const validWithSlots = allowedDays
+          .map(d => d.toISOString().split('T')[0])
+          .filter(ds => statuses[ds]?.hasSlots);
+        
+        setSelectedDate(prev => {
+          if (validWithSlots.length > 0 && !validWithSlots.slice(0, 3).includes(prev)) {
+            return validWithSlots[0];
+          }
+          return prev;
+        });
+      }
+    });
+    return () => { isMounted = false; };
+  }, [allowedDays]);
+
+  const validDatesWithSlots = allowedDays
+    .map(d => d.toISOString().split('T')[0])
+    .filter(dateStr => daysStatus[dateStr]?.hasSlots);
+  const selectableDates = validDatesWithSlots.slice(0, 3);
+
 
   // States for History
   const [myAppointments, setMyAppointments] = useState<Appointment[]>([]);
@@ -182,6 +228,11 @@ const Negociador = () => {
 
       handleSocketUpdate();
       setSelectedSlot(null);
+      
+      // Atualizar silenciosamente o calendário das abas para refletir se e quando o dia se esgotou
+      setTimeout(() => {
+        refreshDayStatuses().then(st => setDaysStatus(st));
+      }, 500);
     } catch (err: any) {
       setNotifModal({
         isOpen: true,
@@ -230,18 +281,54 @@ const Negociador = () => {
                     <label className="text-[10px] font-black text-brand-text/30 uppercase tracking-widest">1. Selecione o Dia</label>
                     <span className="text-[10px] font-black text-brand-accent uppercase tracking-widest bg-brand-accent/10 px-2 py-1 rounded-md">{currentMonth}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-5 gap-3">
                     {allowedDays.map((dateObj) => {
                       const dateStr = dateObj.toISOString().split('T')[0];
+                      const status = daysStatus[dateStr];
+                      const isLoaded = status?.loaded;
+                      const hasSlots = status?.hasSlots;
+                      
+                      const isSelectable = isLoaded && selectableDates.includes(dateStr);
+                      const isNoSlots = isLoaded && !hasSlots;
+                      const isBeyondLimit = isLoaded && hasSlots && !selectableDates.includes(dateStr);
+                      
                       const isActive = selectedDate === dateStr;
+
                       return (
                         <button
                           key={dateStr}
-                          onClick={() => setSelectedDate(dateStr)}
-                          className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1 ${isActive ? 'bg-ocl-primary border-ocl-primary text-white shadow-xl' : 'bg-white border-ocl-primary/5 text-ocl-primary hover:border-brand-accent/30'}`}
+                          onClick={() => isSelectable && setSelectedDate(dateStr)}
+                          disabled={!isSelectable}
+                          title={isNoSlots ? "Sem horários neste dia" : isBeyondLimit ? "Fora do limite de 3 dias operacionais" : ""}
+                          className={`relative p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 overflow-hidden 
+                            ${!isLoaded ? 'bg-brand-bg animate-pulse border-transparent' : 
+                              isNoSlots ? 'bg-[#FFF5F5] border-brand-danger/10 opacity-70 cursor-not-allowed' :
+                              isBeyondLimit ? 'bg-brand-bg border-ocl-primary/5 opacity-50 cursor-not-allowed' :
+                              isActive ? 'bg-ocl-primary border-ocl-primary text-white shadow-xl scale-[1.02] z-10' : 
+                              'bg-white border-ocl-primary/5 text-ocl-primary hover:border-brand-accent/30 hover:shadow-md'}`}
                         >
-                          <span className={`text-[8px] font-black uppercase ${isActive ? 'text-white/40' : 'text-brand-text/30'}`}>{dayNamesShort[dateObj.getUTCDay()]}</span>
-                          <span className="text-lg font-black">{dateObj.getUTCDate()}</span>
+                          {!isLoaded ? (
+                             <div className="w-5 h-5 border-2 border-brand-accent/30 border-t-brand-accent rounded-full animate-spin my-2" />
+                          ) : (
+                            <>
+                              <span className={`text-[8px] font-black uppercase ${isActive ? 'text-white/40' : 
+                                isNoSlots ? 'text-brand-danger/40' : 
+                                'text-brand-text/30'}`}>{dayNamesShort[dateObj.getUTCDay()]}</span>
+                              <span className={`text-lg font-black ${isNoSlots ? 'text-brand-danger/30' : ''}`}>{dateObj.getUTCDate()}</span>
+                              
+                              {isNoSlots && (
+                                <div className="absolute top-1 right-1 text-brand-danger bg-brand-danger/10 p-1 rounded-full shadow-sm">
+                                  <Clock className="w-2.5 h-2.5" />
+                                </div>
+                              )}
+                              
+                              {isBeyondLimit && !isNoSlots && (
+                                <div className="absolute inset-0 bg-white/60 backdrop-blur-[1.5px] flex items-center justify-center">
+                                  <span className="text-[7.5px] font-black uppercase text-brand-text/30 tracking-widest px-1.5 py-0.5 bg-brand-bg rounded-md border border-ocl-primary/10">Limite</span>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </button>
                       );
                     })}

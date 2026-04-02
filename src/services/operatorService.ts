@@ -91,5 +91,13 @@ export const operatorService = {
     });
     if (!response.ok) throw new Error('Erro ao criar atendente');
     return response.json();
+  },
+  
+  async deleteOperator(id: string) {
+    const response = await fetch(`${API_URL}/operadores/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Erro ao excluir atendente');
+    return response.json();
   }
 };
