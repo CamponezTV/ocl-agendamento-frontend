@@ -1,3 +1,5 @@
+import { authFetch } from './apiClient';
+
 const API_URL = 'http://localhost:3000/admin';
 
 export interface OperatorSchedule {
@@ -30,13 +32,13 @@ export interface Operator {
 
 export const operatorService = {
   async fetchOperators(): Promise<Operator[]> {
-    const response = await fetch(`${API_URL}/operadores`);
+    const response = await authFetch(`${API_URL}/operadores`);
     if (!response.ok) throw new Error('Erro ao buscar operadores');
     return response.json();
   },
 
   async updateOperator(id: string, data: { email: string; name: string }) {
-    const response = await fetch(`${API_URL}/operadores/${id}`, {
+    const response = await authFetch(`${API_URL}/operadores/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -46,7 +48,7 @@ export const operatorService = {
   },
 
   async toggleAllSchedules(id: string, is_active: boolean) {
-    const response = await fetch(`${API_URL}/operadores/${id}/toggle-all`, {
+    const response = await authFetch(`${API_URL}/operadores/${id}/toggle-all`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active }),
@@ -56,7 +58,7 @@ export const operatorService = {
   },
 
   async updateSchedule(data: Partial<OperatorSchedule>) {
-    const response = await fetch(`${API_URL}/operadores/escala`, {
+    const response = await authFetch(`${API_URL}/operadores/escala`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -66,7 +68,7 @@ export const operatorService = {
   },
 
   async deleteSchedule(id: string) {
-    const response = await fetch(`${API_URL}/operadores/escala/${id}`, {
+    const response = await authFetch(`${API_URL}/operadores/escala/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Erro ao remover horário');
@@ -74,7 +76,7 @@ export const operatorService = {
   },
 
   async batchUpdateSchedules(changes: any[]) {
-    const response = await fetch(`${API_URL}/operadores/escala/batch`, {
+    const response = await authFetch(`${API_URL}/operadores/escala/batch`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ changes }),
@@ -84,7 +86,7 @@ export const operatorService = {
   },
 
   async createOverride(data: Partial<OperatorSchedule>) {
-    const response = await fetch(`${API_URL}/operadores/escala`, {
+    const response = await authFetch(`${API_URL}/operadores/escala`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -94,7 +96,7 @@ export const operatorService = {
   },
 
   async createOperator(email: string, name: string): Promise<Operator> {
-    const response = await fetch(`${API_URL}/operadores`, {
+    const response = await authFetch(`${API_URL}/operadores`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, name }),
@@ -104,7 +106,7 @@ export const operatorService = {
   },
   
   async deleteOperator(id: string) {
-    const response = await fetch(`${API_URL}/operadores/${id}`, {
+    const response = await authFetch(`${API_URL}/operadores/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Erro ao excluir atendente');
@@ -112,7 +114,7 @@ export const operatorService = {
   },
 
   async updateBreak(data: Partial<OperatorBreak>) {
-    const response = await fetch(`${API_URL}/operadores/pausa`, {
+    const response = await authFetch(`${API_URL}/operadores/pausa`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -122,7 +124,7 @@ export const operatorService = {
   },
 
   async deleteBreak(id: string) {
-    const response = await fetch(`${API_URL}/operadores/pausa/${id}`, {
+    const response = await authFetch(`${API_URL}/operadores/pausa/${id}`, {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Erro ao remover intervalo');

@@ -1,3 +1,5 @@
+import { authFetch } from './apiClient';
+
 const API_URL = 'http://localhost:3000';
 
 export interface Appointment {
@@ -27,13 +29,13 @@ export interface Appointment {
 
 export const appointmentService = {
   async fetchAvailability(date: string) {
-    const response = await fetch(`${API_URL}/disponibilidade?date=${date}`);
+    const response = await authFetch(`${API_URL}/disponibilidade?date=${date}`);
     if (!response.ok) throw new Error('Erro ao buscar disponibilidade');
     return response.json();
   },
 
   async saveAppointment(data: Partial<Appointment>) {
-    const response = await fetch(`${API_URL}/agendamento`, {
+    const response = await authFetch(`${API_URL}/agendamento`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -47,7 +49,7 @@ export const appointmentService = {
   },
 
   async updateAppointmentStatus(id: string, status: string, changed_by?: string | null) {
-    const response = await fetch(`${API_URL}/status/${id}`, {
+    const response = await authFetch(`${API_URL}/status/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status, changed_by }),
@@ -74,7 +76,7 @@ export const appointmentService = {
         if (value) params.append(key, value);
       });
     }
-    const response = await fetch(`${API_URL}/appointments?${params.toString()}`);
+    const response = await authFetch(`${API_URL}/appointments?${params.toString()}`);
     return response.json();
   },
 
@@ -83,7 +85,7 @@ export const appointmentService = {
   },
 
   async deleteAppointment(id: string) {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await authFetch(`${API_URL}/${id}`, {
       method: 'DELETE',
     });
 
@@ -95,7 +97,7 @@ export const appointmentService = {
   },
 
   async rescheduleAppointment(id: string, appointment_date: string, operador_id?: string | null, changed_by?: string | null) {
-    const response = await fetch(`${API_URL}/agendamento/${id}`, {
+    const response = await authFetch(`${API_URL}/agendamento/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ appointment_date, operador_id, changed_by }),
