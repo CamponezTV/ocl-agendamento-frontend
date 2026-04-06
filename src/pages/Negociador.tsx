@@ -14,6 +14,7 @@ import { PremiumDatePicker } from '../components/PremiumDatePicker';
 import { PremiumSelect } from '../components/PremiumSelect';
 
 import { useAuth } from '../contexts/AuthContext';
+import { getVisitorId } from '../utils/visitorId';
 
 const Negociador = () => {
   const { profile } = useAuth();
@@ -143,12 +144,16 @@ const Negociador = () => {
 
   // Load history
   const loadHistory = async () => {
-    if (!profile?.id) return;
     try {
       setLoadingHistory(true);
-      const data = await appointmentService.fetchAppointments({
-        negociador_id: profile.id
-      });
+      const visitorId = getVisitorId();
+      const filters: any = { session_id: visitorId };
+      
+      if (profile?.id) {
+        filters.negociador_id = profile.id;
+      }
+
+      const data = await appointmentService.fetchAppointments(filters);
       setMyAppointments(data);
     } catch (err) {
       console.error(err);
@@ -159,7 +164,7 @@ const Negociador = () => {
 
   // Load all only on tab mount or login
   useEffect(() => {
-    if (activeTab === 'history' && profile?.id) {
+    if (activeTab === 'history') {
        loadHistory();
     }
   }, [activeTab, profile?.id]);
@@ -210,6 +215,7 @@ const Negociador = () => {
         appointment_date: dateObj.toISOString(),
         operador_id: selectedSlot.operatorId,
         negociador_id: formData.negociador_id,
+        session_id: getVisitorId(),
         status: 'Pendente'
       };
 
@@ -247,7 +253,6 @@ const Negociador = () => {
   return (
     <div className="min-h-screen p-8 bg-brand-bg text-brand-text">
       <div className="max-w-6xl mx-auto space-y-8 pt-4">
-        {/* Welcome Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-1">
              <h1 className="text-4xl font-black text-ocl-primary italic flex items-center gap-3">
@@ -403,7 +408,6 @@ const Negociador = () => {
             </motion.div>
           ) : (
             <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-              {/* Filters Header */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-white border border-ocl-primary/10 rounded-3xl shadow-sm mb-8 relative z-40">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-text/30" />
@@ -437,7 +441,6 @@ const Negociador = () => {
                   />
                 </div>
                 
-                {/* Clear Filters Button */}
                 <AnimatePresence>
                   {(searchTerm || statusFilter || dateFilter) && (
                     <motion.div
@@ -462,7 +465,6 @@ const Negociador = () => {
                 </AnimatePresence>
               </div>
 
-              {/* Table */}
               <div className="ocl-card overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">

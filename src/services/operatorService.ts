@@ -10,12 +10,22 @@ export interface OperatorSchedule {
   is_active: boolean;
 }
 
+export interface OperatorBreak {
+  id: string;
+  operador_id: string;
+  day_of_week: number | null;
+  specific_date: string | null;
+  start_time: string;
+  end_time: string;
+}
+
 export interface Operator {
   id: string;
   email: string;
   name: string | null;
   role: string;
   operator_schedules: OperatorSchedule[];
+  operator_breaks: OperatorBreak[];
 }
 
 export const operatorService = {
@@ -98,6 +108,24 @@ export const operatorService = {
       method: 'DELETE',
     });
     if (!response.ok) throw new Error('Erro ao excluir atendente');
+    return response.json();
+  },
+
+  async updateBreak(data: Partial<OperatorBreak>) {
+    const response = await fetch(`${API_URL}/operadores/pausa`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Erro ao atualizar intervalo');
+    return response.json();
+  },
+
+  async deleteBreak(id: string) {
+    const response = await fetch(`${API_URL}/operadores/pausa/${id}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) throw new Error('Erro ao remover intervalo');
     return response.json();
   }
 };

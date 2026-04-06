@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { appointmentService } from '../services/appointmentService';
 import type { Appointment } from '../services/appointmentService';
+import { getVisitorId } from '../utils/visitorId';
 
 export const useAppointments = () => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -10,7 +11,8 @@ export const useAppointments = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const data = await appointmentService.fetchAppointments();
+      const visitorId = getVisitorId();
+      const data = await appointmentService.fetchAppointments({ session_id: visitorId });
       setAppointments(data || []);
     } catch (err: any) {
       setError(err.message);

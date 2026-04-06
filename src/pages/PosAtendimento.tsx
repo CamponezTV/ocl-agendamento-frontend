@@ -12,15 +12,18 @@ import { RescheduleModal } from '../components/RescheduleModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { PremiumDatePicker } from '../components/PremiumDatePicker';
 import { PremiumSelect } from '../components/PremiumSelect';
+import { PremiumTimePicker } from '../components/PremiumTimePicker';
 import { 
   User as UserIcon, Clock, Trash2, Power, 
-  UserPlus, Eye, RefreshCw, ChevronRight, ChevronLeft, Search, Filter, RotateCcw
+  UserPlus, Eye, RefreshCw, ChevronRight, ChevronLeft, Search, Filter, RotateCcw, Coffee
 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
 
 const PosAtendimento = () => {
   const { appointments, deleteAppointment, refreshAppointments, loading: loadingApps } = useAppointments();
   const { socket } = useSocket();
+  const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<'escalas' | 'calendario' | 'atendimentos'>('escalas');
   
   // Lists
@@ -28,6 +31,7 @@ const PosAtendimento = () => {
   const [negotiators, setNegotiators] = useState<any[]>([]);
   
   // Filters
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [negociadorFilter, setNegociadorFilter] = useState('');
@@ -46,6 +50,9 @@ const PosAtendimento = () => {
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   const [detailsApp, setDetailsApp] = useState<Appointment | null>(null);
   const [rescheduleApp, setRescheduleApp] = useState<Appointment | null>(null);
+  const [showBreakModal, setShowBreakModal] = useState(false);
+  const [currentOpForBreak, setCurrentOpForBreak] = useState<Operator | null>(null);
+  const [newBreakForm, setNewBreakForm] = useState({ start: '', end: '', day: '' });
   
   const calendarConstraintsRef = useRef<HTMLDivElement>(null);
   const calendarContentRef = useRef<HTMLDivElement>(null);
@@ -74,7 +81,7 @@ const PosAtendimento = () => {
         app.responsible_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.contract.toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.phone.includes(searchTerm) ||
-        app.recovery_name.toLowerCase().includes(searchTerm.toLowerCase());
+        (app.recovery_name?.toLowerCase().includes(searchTerm.toLowerCase()) || false);
       
       const matchesStatus = statusFilter === '' || app.status === statusFilter;
       const matchesNegociador = negociadorFilter === '' || app.negociador_id === negociadorFilter;
@@ -300,13 +307,22 @@ const PosAtendimento = () => {
   };
 
   const handleUpdateStatus = async (appId: string, newStatus: string) => {
-    try {
-      await appointmentService.updateAppointmentStatus(appId, newStatus);
-      refreshAppointments();
-      setNotifModal({ isOpen: true, type: 'success', title: 'Status Atualizado', message: `Sucesso.`, copyText: '' });
-    } catch (err: any) {
-      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha.', copyText: '' });
-    }
+    setConfirmModal({
+      isOpen: true,
+      title: 'Alterar Status',
+      message: `Deseja realmente alterar o status deste agendamento para "${newStatus}"?`,
+      onConfirm: async () => {
+        try {
+          await appointmentService.updateAppointmentStatus(appId, newStatus, profile?.id);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          refreshAppointments();
+          setNotifModal({ isOpen: true, type: 'success', title: 'Status Atualizado', message: `O agendamento agora está como ${newStatus}.`, copyText: '' });
+        } catch (err: any) {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+          setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao atualizar.', copyText: '' });
+        }
+      }
+    });
   };
   const handleUpdateOperator = async () => {
     if (!editingOp) return;
@@ -350,6 +366,44 @@ const PosAtendimento = () => {
         }
       }
     });
+  };
+
+  const handleAddBreak = async () => {
+    if (!currentOpForBreak || !newBreakForm.start || !newBreakForm.end) return;
+    try {
+      await operatorService.updateBreak({
+        start_time: newBreakForm.start,
+        end_time: newBreakForm.end,
+        day_of_week: newBreakForm.day ? parseInt(newBreakForm.day) : undefined,
+        operador_id: currentOpForBreak.id
+      });
+      const updatedOperators = await operatorService.fetchOperators();
+      setOperators(updatedOperators);
+      
+      const updatedOp = updatedOperators.find(o => o.id === currentOpForBreak.id);
+      if (updatedOp) setCurrentOpForBreak(updatedOp);
+      
+      setNewBreakForm({ start: '', end: '', day: '' });
+      setNotifModal({ isOpen: true, type: 'success', title: 'Sucesso', message: 'Intervalo adicionado.', copyText: '' });
+    } catch (err: any) {
+      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao adicionar.', copyText: '' });
+    }
+  };
+
+  const handleDeleteBreak = async (breakId: string) => {
+    try {
+      await operatorService.deleteBreak(breakId);
+      const updatedOperators = await operatorService.fetchOperators();
+      setOperators(updatedOperators);
+      
+      if (currentOpForBreak) {
+         const updatedOp = updatedOperators.find(o => o.id === currentOpForBreak.id);
+         if (updatedOp) setCurrentOpForBreak(updatedOp);
+      }
+      setNotifModal({ isOpen: true, type: 'success', title: 'Sucesso', message: 'Intervalo removido.', copyText: '' });
+    } catch (err: any) {
+      setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao remover.', copyText: '' });
+    }
   };
 
   const getRolling30Days = () => {
@@ -433,7 +487,7 @@ const PosAtendimento = () => {
                     value={negociadorFilter}
                     onChange={setNegociadorFilter}
                     options={negotiators.map(n => ({ value: n.id, label: n.full_name }))}
-                    placeholder="Todos Negociadores"
+                    placeholder="Todos Recuperadores"
                     icon={<UserIcon className="w-4 h-4" />}
                   />
                 </div>
@@ -454,7 +508,6 @@ const PosAtendimento = () => {
                   />
                 </div>
 
-                {/* Clear Filters Button */}
                 <AnimatePresence>
                   {(searchTerm || statusFilter || dateFilter || negociadorFilter || operadorFilter) && (
                     <div className="md:col-span-4 flex justify-end">
@@ -480,13 +533,97 @@ const PosAtendimento = () => {
               </div>
 
               <div className="bg-white/60 backdrop-blur-lg border border-ocl-primary/10 rounded-[2rem] shadow-xl shadow-ocl-primary/5 overflow-hidden">
+                <AnimatePresence>
+                  {selectedIds.length > 0 && (
+                    <motion.div 
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="bg-brand-accent/10 border-b border-brand-accent/20 px-8 py-4 flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-brand-accent/20 flex items-center justify-center">
+                          <Filter className="w-4 h-4 text-brand-accent" />
+                        </div>
+                        <span className="text-sm font-bold text-brand-accent">
+                          {selectedIds.length} agendamentos selecionados
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => setSelectedIds([])}
+                          className="px-4 py-2 text-xs font-bold text-brand-text/40 hover:text-brand-text/60 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setConfirmModal({
+                              isOpen: true,
+                              title: 'Excluir em Massa',
+                              message: `Tem certeza que deseja excluir ${selectedIds.length} agendamentos selecionados? Esta ação não pode ser desfeita.`,
+                              onConfirm: async () => {
+                                try {
+                                  const response = await fetch('http://localhost:3000/bulk', {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ ids: selectedIds })
+                                  });
+                                  if (response.ok) {
+                                    setNotifModal({
+                                      isOpen: true,
+                                      type: 'success',
+                                      title: 'Sucesso',
+                                      message: `${selectedIds.length} agendamentos foram excluídos.`,
+                                      copyText: ''
+                                    });
+                                    setSelectedIds([]);
+                                    refreshAppointments();
+                                  } else {
+                                    throw new Error();
+                                  }
+                                } catch (err) {
+                                  setNotifModal({
+                                    isOpen: true,
+                                    type: 'error',
+                                    title: 'Erro',
+                                    message: 'Não foi possível excluir os agendamentos selecionados.',
+                                    copyText: ''
+                                  });
+                                }
+                              }
+                            });
+                          }}
+                          className="flex items-center gap-2 bg-brand-danger text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-brand-danger/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Excluir Selecionados
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-ocl-primary/95 text-white/60 border-b border-ocl-primary/10">
+                        <th className="p-6 text-left w-10">
+                          <input 
+                            type="checkbox"
+                            className="rounded border-white/20 bg-white/5 text-ocl-accent focus:ring-ocl-accent focus:ring-offset-ocl-primary"
+                            checked={filteredApps.length > 0 && selectedIds.length === filteredApps.length}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedIds(filteredApps.map(a => a.id));
+                              } else {
+                                setSelectedIds([]);
+                              }
+                            }}
+                          />
+                        </th>
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Cliente / Contrato</th>
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Agendamento</th>
-                        <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Negociador</th>
+                        <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Recuperador</th>
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Pós-Atendente</th>
                         <th className="p-6 text-[10px] uppercase font-black tracking-[0.2em]">Estado Atual</th>
                         <th className="p-6 text-right text-[10px] uppercase font-black tracking-[0.2em]">Ações</th>
@@ -503,8 +640,22 @@ const PosAtendimento = () => {
                             key={app.id} 
                             initial={{ opacity: 0 }} 
                             animate={{ opacity: 1 }}
-                            className="group hover:bg-ocl-primary/[0.02] transition-all duration-300"
+                            className={`group hover:bg-ocl-primary/[0.02] transition-all duration-300 ${selectedIds.includes(app.id) ? 'bg-brand-accent/5' : ''}`}
                           >
+                            <td className="p-6">
+                              <input 
+                                type="checkbox"
+                                className="rounded border-white/10 bg-white/5 text-ocl-accent focus:ring-ocl-accent focus:ring-offset-ocl-primary"
+                                checked={selectedIds.includes(app.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedIds(prev => [...prev, app.id]);
+                                  } else {
+                                    setSelectedIds(prev => prev.filter(id => id !== app.id));
+                                  }
+                                }}
+                              />
+                            </td>
                             <td className="p-6">
                               <span className="font-extrabold text-ocl-primary block text-sm group-hover:text-brand-accent transition-colors">{app.responsible_name}</span>
                               <span className="text-[10px] font-black text-brand-text/20 uppercase tracking-tight italic">Contrato: {app.contract}</span>
@@ -516,8 +667,8 @@ const PosAtendimento = () => {
                               </div>
                             </td>
                             <td className="p-6">
-                              <span className="text-[10px] font-black uppercase text-ocl-primary/40 leading-none">{app.negociador?.full_name || 'Sistema'}</span>
-                              <span className="block text-[8px] font-bold text-brand-text/20 uppercase mt-0.5">Perfil: {app.negociador?.role || 'Não inf.'}</span>
+                              <span className="text-[10px] font-black uppercase text-ocl-primary/40 leading-none">{app.recovery_name || app.negociador?.full_name || 'Sistema'}</span>
+                              <span className="block text-[8px] font-bold text-brand-text/20 uppercase mt-0.5">Perfil: {app.negociador_id ? (app.negociador?.role || 'Negociador') : 'Visitante'}</span>
                             </td>
                             <td className="p-6">
                               <div className="flex items-center gap-2">
@@ -617,6 +768,16 @@ const PosAtendimento = () => {
                             title="Resetar para Escala Padrão"
                           >
                             <RotateCcw className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setCurrentOpForBreak(op);
+                              setShowBreakModal(true);
+                            }} 
+                            className="p-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition-all border border-white/5 active:scale-90"
+                            title="Gerenciar Pausas/Intervalos"
+                          >
+                            <Coffee className="w-4 h-4" />
                           </button>
                           <button 
                             onClick={() => handleDeleteOperator(op.id)} 
@@ -780,7 +941,6 @@ const PosAtendimento = () => {
                   </motion.div>
                 </div>
                 
-                {/* Visual fading indicators */}
                 <div className="absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-brand-bg to-transparent pointer-events-none opacity-0 group-hover/calendar:opacity-100 transition-opacity"></div>
                 <div className="absolute top-0 right-0 h-full w-20 bg-gradient-to-l from-brand-bg to-transparent pointer-events-none opacity-0 group-hover/calendar:opacity-100 transition-opacity"></div>
               </div>
@@ -816,6 +976,113 @@ const PosAtendimento = () => {
       <ConfirmationModal {...confirmModal} onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })} />
       <AppointmentDetailsModal isOpen={!!detailsApp} appointment={detailsApp} onClose={() => setDetailsApp(null)} />
       <RescheduleModal isOpen={!!rescheduleApp} appointment={rescheduleApp} onClose={() => setRescheduleApp(null)} onSuccess={() => { refreshAppointments(); setNotifModal({ isOpen: true, type: 'success', title: 'Sucesso', message: 'Reagendado.', copyText: '' }); }} />
+
+      <AnimatePresence>
+        {showBreakModal && currentOpForBreak && (
+          <div className="fixed inset-0 bg-ocl-dark/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[2.5rem] max-w-2xl w-full shadow-2xl relative overflow-hidden flex flex-col h-auto max-h-[85vh]"
+            >
+              <div className="p-8 border-b border-ocl-primary/5 bg-ocl-primary/5 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-ocl-primary">Intervalos & Pausas</h3>
+                  <p className="text-[9px] font-bold text-brand-text/30 uppercase tracking-widest">{currentOpForBreak.name || currentOpForBreak.email}</p>
+                </div>
+                <button onClick={() => setShowBreakModal(false)} className="p-3 hover:bg-brand-danger/10 text-brand-text/20 hover:text-brand-danger rounded-2xl transition-all">
+                  Sair
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-8 space-y-8">
+                {/* List of Breaks */}
+                <div className="space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-brand-text/30 flex items-center gap-2">
+                    <Coffee className="w-3.5 h-3.5 text-brand-accent" />
+                    Pausas Ativas
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 gap-2">
+                    {currentOpForBreak.operator_breaks?.length === 0 ? (
+                       <div className="p-6 border-2 border-dashed border-ocl-primary/5 rounded-2xl text-center italic text-brand-text/20 text-[10px]">
+                         Nenhuma pausa configurada
+                       </div>
+                    ) : (
+                      currentOpForBreak.operator_breaks?.map(b => (
+                        <div key={b.id} className="flex items-center justify-between p-5 bg-brand-bg/30 rounded-2xl border border-ocl-primary/5 hover:border-brand-accent/20 transition-all group">
+                          <div className="flex items-center gap-6">
+                            <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-ocl-primary/5 shadow-sm">
+                              <Clock className="w-3.5 h-3.5 text-brand-accent" />
+                              <span className="text-xs font-black text-ocl-primary">{b.start_time} - {b.end_time}</span>
+                            </div>
+                            <span className="text-[10px] font-black uppercase text-brand-text/40 tracking-wider">
+                              {b.specific_date ? new Date(b.specific_date).toLocaleDateString('pt-BR') : `Toda ${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'][b.day_of_week || 0]}`}
+                            </span>
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteBreak(b.id)}
+                            className="p-2.5 text-brand-danger/40 hover:text-brand-danger hover:bg-brand-danger/10 rounded-xl transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Form to Add Break */}
+                <div className="p-6 bg-ocl-primary/[0.02] rounded-[1.5rem] border border-ocl-primary/5 space-y-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-ocl-primary">Adicionar Novo Intervalo</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                     <div>
+                       <label className="text-[9px] font-black uppercase text-brand-text/30 mb-2 block">Início</label>
+                       <PremiumTimePicker 
+                        value={newBreakForm.start}
+                        onChange={v => setNewBreakForm({...newBreakForm, start: v})}
+                       />
+                     </div>
+                     <div>
+                       <label className="text-[9px] font-black uppercase text-brand-text/30 mb-2 block">Fim</label>
+                       <PremiumTimePicker 
+                        value={newBreakForm.end}
+                        onChange={v => setNewBreakForm({...newBreakForm, end: v})}
+                       />
+                     </div>
+                     <div className="md:col-span-2">
+                       <label className="text-[9px] font-black uppercase text-brand-text/30 mb-2 block">Dia da Semana (Recorrente)</label>
+                       <PremiumSelect
+                        value={newBreakForm.day}
+                        onChange={v => setNewBreakForm({...newBreakForm, day: v})}
+                        options={[
+                          { value: '', label: 'Não recorrente' },
+                          { value: '1', label: 'Segunda-feira' },
+                          { value: '2', label: 'Terça-feira' },
+                          { value: '3', label: 'Quarta-feira' },
+                          { value: '4', label: 'Quinta-feira' },
+                          { value: '5', label: 'Sexta-feira' },
+                          { value: '6', label: 'Sábado' },
+                        ]}
+                        placeholder="Selecione a recorrência"
+                        icon={<RotateCcw className="w-4 h-4" />}
+                       />
+                     </div>
+                  </div>
+                  <button 
+                    onClick={handleAddBreak}
+                    className="w-full py-3 bg-ocl-primary text-white rounded-xl font-black text-xs uppercase tracking-widest shadow-xl shadow-ocl-primary/10 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
+                    disabled={!newBreakForm.start || !newBreakForm.end}
+                  >
+                    Salvar Intervalo
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

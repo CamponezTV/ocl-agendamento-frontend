@@ -13,6 +13,7 @@ export interface Appointment {
   agreed_values: string;
   appointment_date: string;
   slot_id?: string | null;
+  session_id?: string | null;
   created_at?: string;
   users?: {
     name: string;
@@ -45,11 +46,11 @@ export const appointmentService = {
     return response.json();
   },
 
-  async updateAppointmentStatus(id: string, status: string) {
+  async updateAppointmentStatus(id: string, status: string, changed_by?: string | null) {
     const response = await fetch(`${API_URL}/status/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, changed_by }),
     });
 
     if (!response.ok) {
@@ -62,6 +63,7 @@ export const appointmentService = {
   async fetchAppointments(filters?: {
     status?: string;
     negociador_id?: string;
+    session_id?: string;
     search?: string;
     startDate?: string;
     endDate?: string;
@@ -92,11 +94,11 @@ export const appointmentService = {
     return response.json();
   },
 
-  async rescheduleAppointment(id: string, appointment_date: string, operador_id?: string | null) {
+  async rescheduleAppointment(id: string, appointment_date: string, operador_id?: string | null, changed_by?: string | null) {
     const response = await fetch(`${API_URL}/agendamento/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appointment_date, operador_id }),
+      body: JSON.stringify({ appointment_date, operador_id, changed_by }),
     });
 
     if (!response.ok) {

@@ -43,7 +43,6 @@ export const PremiumSelect = ({
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {/* Trigger */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 w-full bg-white/40 backdrop-blur-md border border-ocl-primary/10 rounded-2xl px-4 py-3 cursor-pointer hover:bg-white/60 transition-all group"
@@ -70,7 +69,6 @@ export const PremiumSelect = ({
         <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-accent' : 'text-brand-text/20'}`} />
       </div>
 
-      {/* Popover */}
       <AnimatePresence>
         {isOpen && (
           <motion.div

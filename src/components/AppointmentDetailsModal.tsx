@@ -64,10 +64,8 @@ Valores: R$ ${appointment.agreed_values}`;
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            {/* Accent bar */}
             <div className="h-1.5 w-full bg-gradient-to-r from-ocl-primary via-brand-accent to-ocl-primary shrink-0" />
 
-            {/* Header */}
             <div className="flex items-start justify-between p-8 pb-4 shrink-0">
               <div>
                 <h2 className="text-2xl font-black text-ocl-primary tracking-tight">Detalhes do Agendamento</h2>
@@ -81,7 +79,6 @@ Valores: R$ ${appointment.agreed_values}`;
               </button>
             </div>
 
-            {/* Content - Scrollable area */}
             <div className="px-8 pb-8 space-y-3 overflow-y-auto custom-scrollbar">
               <InfoRow icon={Calendar} label="Data" value={formattedDate} />
               <InfoRow icon={Clock} label="Horário" value={formattedTime} />

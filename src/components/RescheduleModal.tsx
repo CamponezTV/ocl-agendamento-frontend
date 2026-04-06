@@ -6,6 +6,7 @@ import { operatorService } from '../services/operatorService';
 import type { Appointment } from '../services/appointmentService';
 import type { Operator } from '../services/operatorService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const getNext30Days = () => {
 
 export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Props) => {
   useBodyScrollLock(isOpen);
+  const { profile } = useAuth();
   const [selectedDate, setSelectedDate] = useState('');
   const [slots, setSlots] = useState<any[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
@@ -105,7 +107,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
         operadorId = selectedOperatorId || null;
       }
 
-      await appointmentService.rescheduleAppointment(appointment.id, isoDate, operadorId);
+      await appointmentService.rescheduleAppointment(appointment.id, isoDate, operadorId, profile?.id);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -137,10 +139,8 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            {/* Header accent bar */}
             <div className="h-1.5 w-full bg-gradient-to-r from-ocl-primary via-brand-accent to-ocl-primary shrink-0" />
 
-            {/* Header */}
             <div className="flex items-start justify-between p-8 pb-4 shrink-0">
               <div>
                 <h2 className="text-2xl font-black text-ocl-primary tracking-tight flex items-center gap-2">
@@ -158,15 +158,12 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
               </button>
             </div>
 
-            {/* Scrollable body */}
             <div className="overflow-y-auto overflow-x-hidden px-8 pb-8 space-y-6 custom-scrollbar">
-              {/* Data Strip Container */}
               <div className="relative -mx-8 pt-4">
                 <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2 px-8">
                   <Calendar className="w-3 h-3" /> Selecione a Nova Data
                 </label>
                 
-                {/* Modern CSS Mask for Fade Edge - Eliminates 'flash' overlays */}
                 <div 
                   className="relative select-none overflow-hidden"
                   ref={constraintsRef}
@@ -220,7 +217,6 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                 </div>
               </div>
 
-              {/* Slots */}
               <div>
                 <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-3">
                   <Clock className="w-3 h-3" /> Horário Disponível
@@ -278,7 +274,6 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                 )}
               </div>
 
-              {/* Operador manual (se não selecionar slot) */}
               {!selectedSlot && (
                 <div>
                   <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-3">
@@ -312,7 +307,6 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                 </p>
               )}
 
-              {/* Actions */}
               <div className="flex gap-3">
                 <button
                   onClick={() => !submitting && onClose()}

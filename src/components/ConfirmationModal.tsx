@@ -39,7 +39,6 @@ export const ConfirmationModal = ({
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden relative border border-white/20"
           >
-            {/* Header accent bar */}
             <div className="h-1.5 w-full bg-gradient-to-r from-brand-danger via-rose-400 to-brand-danger shrink-0" />
 
             <div className="h-32 flex items-center justify-center bg-brand-danger/5 relative">

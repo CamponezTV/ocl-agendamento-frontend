@@ -44,7 +44,6 @@ export const NotificationModal = ({ isOpen, onClose, type, title, message, copyT
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden relative border border-white/20"
           >
-            {/* Header accent bar */}
             <div className={`h-1.5 w-full shrink-0 ${
               type === 'success' ? 'bg-brand-success' : 'bg-brand-danger'
             } bg-gradient-to-r ${
