@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 
@@ -19,14 +19,14 @@ export const StatusChangeModal = ({ isOpen, onClose, onConfirm, oldStatus, newSt
 
   return (
     <AnimatePresence>
-      <motion.div
+      <m.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 bg-ocl-dark/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
-        <motion.div
+        <m.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -100,8 +100,8 @@ export const StatusChangeModal = ({ isOpen, onClose, onConfirm, oldStatus, newSt
               </div>
             </div>
           </div>
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     </AnimatePresence>
   );
 };

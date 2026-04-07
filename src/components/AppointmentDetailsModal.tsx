@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, FileText, Phone, User, DollarSign, Calendar, Clock, UserCheck, Copy, Check } from 'lucide-react';
 import type { Appointment } from '../services/appointmentService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -50,14 +50,14 @@ Valores: R$ ${appointment.agreed_values}`;
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[8000] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
@@ -149,8 +149,8 @@ Valores: R$ ${appointment.agreed_values}`;
                 </button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

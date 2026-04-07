@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { m } from 'framer-motion';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 const LoginPage: React.FC = () => {
@@ -55,7 +55,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-slate-50 font-sans">
-      <motion.div 
+      <m.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-[420px]"
@@ -67,14 +67,14 @@ const LoginPage: React.FC = () => {
 
           <form onSubmit={handleLogin} className="space-y-6">
             {error && (
-              <motion.div 
+              <m.div 
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="p-4 bg-red-50 border border-red-100 rounded-xl flex items-center gap-3 text-red-600 text-xs font-bold uppercase"
               >
                 <AlertCircle className="w-5 h-5 shrink-0" />
                 {error}
-              </motion.div>
+              </m.div>
             )}
 
             <div className="space-y-5">
@@ -122,7 +122,7 @@ const LoginPage: React.FC = () => {
             <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest">© 2026 OCL Advogados Associados</p>
           </div>
         </div>
-      </motion.div>
+      </m.div>
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, NavLink, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { LazyMotion, domMax } from 'framer-motion';
 import Negociador from './pages/Negociador';
 import PosAtendimento from './pages/PosAtendimento';
 import { LoginPage } from './pages/auth';
@@ -128,11 +129,13 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
-        <AppContent />
-      </Router>
-    </AuthProvider>
+    <LazyMotion features={domMax} strict>
+      <AuthProvider>
+        <Router>
+          <AppContent />
+        </Router>
+      </AuthProvider>
+    </LazyMotion>
   );
 }
 

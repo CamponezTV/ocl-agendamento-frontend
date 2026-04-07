@@ -1,4 +1,4 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
@@ -25,14 +25,14 @@ export const ConfirmationModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.94, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 20 }}
@@ -49,13 +49,13 @@ export const ConfirmationModal = ({
                 <X className="w-5 h-5" />
               </button>
               
-              <motion.div
+              <m.div
                 initial={{ rotate: -20, scale: 0 }}
                 animate={{ rotate: 0, scale: 1 }}
                 className="bg-brand-danger/10 p-4 rounded-full"
               >
                 <AlertTriangle className="w-10 h-10 text-brand-danger" />
-              </motion.div>
+              </m.div>
             </div>
 
             <div className="p-8 pt-6">
@@ -84,8 +84,8 @@ export const ConfirmationModal = ({
                 </button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

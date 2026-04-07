@@ -8,7 +8,7 @@ import { BookingFormModal } from '../components/BookingFormModal';
 import type { BookingFormData } from '../components/BookingFormModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { CheckCircle2, Loader2, Sun, Sunset, Search, Filter, Clock, Eye, RotateCcw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal';
 import { PremiumDatePicker } from '../components/PremiumDatePicker';
 import { PremiumSelect } from '../components/PremiumSelect';
@@ -255,12 +255,12 @@ const Negociador = () => {
     <div className="min-h-screen p-8 bg-brand-bg text-brand-text">
       <div className="max-w-6xl mx-auto space-y-8 pt-4">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-1">
+           <m.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-1">
              <h1 className="text-4xl font-black text-ocl-primary italic flex items-center gap-3">
                Olá, {profile?.full_name?.split(' ')[0] || 'Negociador'} 
              </h1>
              <p className="text-xs font-black text-brand-text/30 uppercase tracking-[0.3em] pl-1">Sistema de Agendamento OCL</p>
-           </motion.div>
+           </m.div>
 
            <div className="flex bg-white/50 backdrop-blur-sm border border-ocl-primary/10 p-1.5 rounded-2xl shadow-sm">
              <button 
@@ -280,7 +280,7 @@ const Negociador = () => {
 
         <AnimatePresence mode="wait">
           {activeTab === 'booking' ? (
-            <motion.div key="booking" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <m.div key="booking" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <div className="ocl-card p-6 border-l-4 border-l-brand-accent">
                   <div className="flex justify-between items-center mb-6">
@@ -406,9 +406,9 @@ const Negociador = () => {
                   Agendar Agora
                 </button>
               </div>
-            </motion.div>
+            </m.div>
           ) : (
-            <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+            <m.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-white border border-ocl-primary/10 rounded-3xl shadow-sm mb-8 relative z-40">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-text/30" />
@@ -445,7 +445,7 @@ const Negociador = () => {
                 
                 <AnimatePresence>
                   {(searchTerm || statusFilter || dateFilter) && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
@@ -462,7 +462,7 @@ const Negociador = () => {
                         <RotateCcw className="w-3.5 h-3.5" />
                         Limpar Filtros
                       </button>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>
@@ -514,7 +514,7 @@ const Negociador = () => {
                   </table>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

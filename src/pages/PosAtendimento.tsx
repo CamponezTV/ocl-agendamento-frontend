@@ -18,7 +18,7 @@ import {
   User as UserIcon, Clock, Trash2, Power, 
   UserPlus, Eye, RefreshCw, ChevronRight, ChevronLeft, Search, Filter, RotateCcw, Coffee
 } from 'lucide-react';
-import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
+import { m, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 const PosAtendimento = () => {
   const { appointments, deleteAppointment, refreshAppointments, loading: loadingApps } = useAppointments();
@@ -64,7 +64,8 @@ const PosAtendimento = () => {
   useEffect(() => {
     const loadNegotiators = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/negotiators`);
+        const BACKEND_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+        const response = await fetch(`${BACKEND_URL}/negotiators`);
         if (response.ok) {
           const data = await response.json();
           setNegotiators(data);
@@ -481,7 +482,7 @@ const PosAtendimento = () => {
 
         <AnimatePresence mode="wait">
           {activeTab === 'atendimentos' && (
-            <motion.div key="apps" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
+            <m.div key="apps" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-white border border-ocl-primary/10 rounded-3xl shadow-sm mb-8 relative z-40">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-text/30" />
@@ -537,7 +538,7 @@ const PosAtendimento = () => {
                 <AnimatePresence>
                   {(searchTerm || statusFilter || dateFilter || negociadorFilter || operadorFilter) && (
                     <div className="md:col-span-4 flex justify-end">
-                      <motion.button
+                      <m.button
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: 20 }}
@@ -552,7 +553,7 @@ const PosAtendimento = () => {
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                         Limpar Filtros
-                      </motion.button>
+                      </m.button>
                     </div>
                   )}
                 </AnimatePresence>
@@ -561,7 +562,7 @@ const PosAtendimento = () => {
               <div className="bg-white/60 backdrop-blur-lg border border-ocl-primary/10 rounded-[2rem] shadow-xl shadow-ocl-primary/5 overflow-hidden">
                 <AnimatePresence>
                   {selectedIds.length > 0 && (
-                    <motion.div 
+                    <m.div 
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
@@ -590,7 +591,7 @@ const PosAtendimento = () => {
                               message: `Tem certeza que deseja excluir ${selectedIds.length} agendamentos selecionados? Esta ação não pode ser desfeita.`,
                               onConfirm: async () => {
                                 try {
-                                  const response = await fetch('http://localhost:3000/bulk', {
+                                  const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/bulk`, {
                                     method: 'DELETE',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify({ ids: selectedIds })
@@ -626,7 +627,7 @@ const PosAtendimento = () => {
                           Excluir Selecionados
                         </button>
                       </div>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
                 <div className="overflow-x-auto">
@@ -662,7 +663,7 @@ const PosAtendimento = () => {
                         <tr><td colSpan={6} className="p-20 text-center text-brand-text/30 italic font-medium">Nenhum agendamento encontrado para os filtros selecionados.</td></tr>
                       ) : (
                         filteredApps.map((app) => (
-                          <motion.tr 
+                          <m.tr 
                             key={app.id} 
                             initial={{ opacity: 0 }} 
                             animate={{ opacity: 1 }}
@@ -731,18 +732,18 @@ const PosAtendimento = () => {
                                 <button onClick={() => handleDelete(app.id)} className="p-2.5 text-brand-danger bg-brand-danger/5 rounded-xl hover:bg-brand-danger hover:text-white hover:scale-110 transition-all duration-300 shadow-sm"><Trash2 className="w-4 h-4" /></button>
                               </div>
                             </td>
-                          </motion.tr>
+                          </m.tr>
                         ))
                       )}
                     </tbody>
                   </table>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
 
           {activeTab === 'escalas' && (
-            <motion.div 
+            <m.div 
               key="scales" 
               initial={{ opacity: 0, scale: 0.98 }} 
               animate={{ opacity: 1, scale: 1 }} 
@@ -771,7 +772,7 @@ const PosAtendimento = () => {
               ) : (
                 <div className="grid grid-cols-1 gap-8">
                   {operators.map((op, idx) => (
-                    <motion.div 
+                    <m.div 
                       key={op.id}
                       initial={{ opacity: 0, y: 30 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -888,15 +889,15 @@ const PosAtendimento = () => {
                           })}
                         </div>
                       </div>
-                    </motion.div>
+                    </m.div>
                   ))}
                 </div>
               )}
-            </motion.div>
+            </m.div>
           )}
 
           {activeTab === 'calendario' && (
-            <motion.div 
+            <m.div 
               key="calendar" 
               initial={{ opacity: 0, x: 20 }} 
               animate={{ opacity: 1, x: 0 }} 
@@ -919,7 +920,7 @@ const PosAtendimento = () => {
                   ref={calendarConstraintsRef}
                   className="overflow-hidden pb-8 pt-2"
                 >
-                  <motion.div 
+                  <m.div 
                     ref={calendarContentRef}
                     style={{ x: calendarX }}
                     drag="x"
@@ -927,7 +928,7 @@ const PosAtendimento = () => {
                     className="flex gap-6 px-4 cursor-grab active:cursor-grabbing w-max"
                   >
                     {rolling30Days.map((day, dIdx) => (
-                      <motion.div 
+                      <m.div 
                         key={day.date} 
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
@@ -963,9 +964,9 @@ const PosAtendimento = () => {
                             })}
                           </div>
                         </div>
-                      </motion.div>
+                      </m.div>
                     ))}
-                  </motion.div>
+                  </m.div>
                 </div>
                 
                 <div className="absolute top-0 left-0 h-full w-20 bg-gradient-to-r from-brand-bg to-transparent pointer-events-none opacity-0 group-hover/calendar:opacity-100 transition-opacity"></div>
@@ -980,22 +981,22 @@ const PosAtendimento = () => {
                   <div className="w-2 h-2 rounded-full bg-brand-danger"></div> Indisponível
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
 
         {showAddModal && (
-          <div className="fixed inset-0 bg-ocl-dark/90 backdrop-blur-md z-50 flex items-center justify-center p-6"><motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-10 rounded-3xl max-w-md w-full shadow-2xl relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-brand-accent"></div><h3 className="text-3xl font-black mb-8 text-ocl-primary">Novo Pós-atendente</h3><div className="space-y-6"><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">Nome</label><input type="text" value={newOp.name} onChange={e => setNewOp({...newOp, name: e.target.value})} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">E-mail</label><input type="email" value={newOp.email} onChange={e => setNewOp({...newOp, email: e.target.value})} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div className="flex gap-4 pt-4"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 border rounded-2xl font-black text-xs uppercase">Sair</button><button onClick={handleAddOperator} className="flex-1 py-4 bg-ocl-primary text-white rounded-2xl font-black text-xs uppercase shadow-lg">Criar</button></div></div></motion.div></div>
+          <div className="fixed inset-0 bg-ocl-dark/90 backdrop-blur-md z-50 flex items-center justify-center p-6"><m.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-10 rounded-3xl max-w-md w-full shadow-2xl relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-brand-accent"></div><h3 className="text-3xl font-black mb-8 text-ocl-primary">Novo Pós-atendente</h3><div className="space-y-6"><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">Nome</label><input type="text" value={newOp.name} onChange={e => setNewOp({...newOp, name: e.target.value})} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">E-mail</label><input type="email" value={newOp.email} onChange={e => setNewOp({...newOp, email: e.target.value})} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div className="flex gap-4 pt-4"><button onClick={() => setShowAddModal(false)} className="flex-1 py-4 border rounded-2xl font-black text-xs uppercase">Sair</button><button onClick={handleAddOperator} className="flex-1 py-4 bg-ocl-primary text-white rounded-2xl font-black text-xs uppercase shadow-lg">Criar</button></div></div></m.div></div>
         )}
 
         {showEditModal && editingOp && (
-          <div className="fixed inset-0 bg-ocl-dark/90 backdrop-blur-md z-50 flex items-center justify-center p-6"><motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-10 rounded-3xl max-w-md w-full shadow-2xl relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-ocl-primary"></div><h3 className="text-3xl font-black mb-8 text-ocl-primary">Editar Atendente</h3><div className="space-y-6"><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">Nome</label><input type="text" value={editingOp.name || ''} onChange={e => setEditingOp({...editingOp, name: e.target.value} as any)} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">E-mail</label><input type="email" value={editingOp.email} onChange={e => setEditingOp({...editingOp, email: e.target.value} as any)} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div className="flex gap-4 pt-4"><button onClick={() => setShowEditModal(false)} className="flex-1 py-4 border rounded-2xl font-black text-xs uppercase">Sair</button><button onClick={handleUpdateOperator} className="flex-1 py-4 bg-ocl-primary text-white rounded-2xl font-black text-xs uppercase shadow-lg">Salvar</button></div></div></motion.div></div>
+          <div className="fixed inset-0 bg-ocl-dark/90 backdrop-blur-md z-50 flex items-center justify-center p-6"><m.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-white p-10 rounded-3xl max-w-md w-full shadow-2xl relative overflow-hidden"><div className="absolute top-0 left-0 w-full h-2 bg-ocl-primary"></div><h3 className="text-3xl font-black mb-8 text-ocl-primary">Editar Atendente</h3><div className="space-y-6"><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">Nome</label><input type="text" value={editingOp.name || ''} onChange={e => setEditingOp({...editingOp, name: e.target.value} as any)} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div><label className="text-[10px] font-black text-brand-text/30 uppercase mb-2 block">E-mail</label><input type="email" value={editingOp.email} onChange={e => setEditingOp({...editingOp, email: e.target.value} as any)} className="w-full bg-brand-bg border rounded-2xl px-5 py-4 text-sm font-bold" /></div><div className="flex gap-4 pt-4"><button onClick={() => setShowEditModal(false)} className="flex-1 py-4 border rounded-2xl font-black text-xs uppercase">Sair</button><button onClick={handleUpdateOperator} className="flex-1 py-4 bg-ocl-primary text-white rounded-2xl font-black text-xs uppercase shadow-lg">Salvar</button></div></div></m.div></div>
         )}
       </div>
 
       <AnimatePresence>
         {pendingChanges.length > 0 && (
-          <motion.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-8 left-8 z-[100]"><button onClick={saveBatchUpdate} disabled={isSaving} className="bg-brand-success hover:scale-105 text-white shadow-2xl px-8 py-5 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center gap-3 active:scale-95 transition-all">{isSaving ? 'Salvando...' : 'Salvar Alterações'}<span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">{pendingChanges.length}</span></button></motion.div>
+          <m.div initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }} className="fixed bottom-8 left-8 z-[100]"><button onClick={saveBatchUpdate} disabled={isSaving} className="bg-brand-success hover:scale-105 text-white shadow-2xl px-8 py-5 rounded-3xl font-black text-xs uppercase tracking-widest flex items-center gap-3 active:scale-95 transition-all">{isSaving ? 'Salvando...' : 'Salvar Alterações'}<span className="bg-white/20 px-2 py-0.5 rounded-full text-[10px]">{pendingChanges.length}</span></button></m.div>
         )}
       </AnimatePresence>
 
@@ -1007,7 +1008,7 @@ const PosAtendimento = () => {
       <AnimatePresence>
         {showBreakModal && currentOpForBreak && (
           <div className="fixed inset-0 bg-ocl-dark/95 backdrop-blur-xl z-[100] flex items-center justify-center p-6">
-            <motion.div 
+            <m.div 
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1106,7 +1107,7 @@ const PosAtendimento = () => {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           </div>
         )}
       </AnimatePresence>

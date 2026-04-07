@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, User, Loader2, RefreshCw } from 'lucide-react';
 import { appointmentService } from '../services/appointmentService';
 import { operatorService } from '../services/operatorService';
@@ -125,14 +125,14 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[8000] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
         >
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
@@ -175,7 +175,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                   onMouseDown={(e) => (e.currentTarget.style.cursor = 'grabbing')}
                   onMouseUp={(e) => (e.currentTarget.style.cursor = 'grab')}
                 >
-                  <motion.div 
+                  <m.div 
                     drag="x"
                     dragConstraints={constraintsRef}
                     dragElastic={0.15}
@@ -190,7 +190,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                       const isActive = selectedDate === date;
 
                       return (
-                        <motion.button
+                        <m.button
                           key={date}
                           onTap={() => setSelectedDate(date)}
                           whileHover={{ y: -2 }}
@@ -210,10 +210,10 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                           <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-white/40' : 'text-brand-text/20'}`}>
                             {monthName}
                           </span>
-                        </motion.button>
+                        </m.button>
                       );
                     })}
-                  </motion.div>
+                  </m.div>
                 </div>
               </div>
 
@@ -332,8 +332,8 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                 </button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

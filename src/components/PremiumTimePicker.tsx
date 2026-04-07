@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Clock, X, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 
 interface Props {
   value: string; // HH:mm
@@ -80,7 +80,7 @@ export const PremiumTimePicker = ({ value, onChange, placeholder = '00:00', clas
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 5, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -156,7 +156,7 @@ export const PremiumTimePicker = ({ value, onChange, placeholder = '00:00', clas
                 Confirmar
               </button>
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>
