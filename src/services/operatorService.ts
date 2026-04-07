@@ -1,6 +1,6 @@
 import { authFetch } from './apiClient';
 
-const API_URL = 'http://localhost:3000/admin';
+const API_URL = `${import.meta.env.VITE_API_BASE_URL}/admin`;
 
 export interface OperatorSchedule {
   id: string;

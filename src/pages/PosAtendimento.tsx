@@ -13,13 +13,13 @@ import { StatusBadge } from '../components/StatusBadge';
 import { PremiumDatePicker } from '../components/PremiumDatePicker';
 import { PremiumSelect } from '../components/PremiumSelect';
 import { PremiumTimePicker } from '../components/PremiumTimePicker';
+import { StatusChangeModal } from '../components/StatusChangeModal';
 import { 
   User as UserIcon, Clock, Trash2, Power, 
   UserPlus, Eye, RefreshCw, ChevronRight, ChevronLeft, Search, Filter, RotateCcw, Coffee
 } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, animate } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
-
 const PosAtendimento = () => {
   const { appointments, deleteAppointment, refreshAppointments, loading: loadingApps } = useAppointments();
   const { socket } = useSocket();
@@ -51,6 +51,8 @@ const PosAtendimento = () => {
   const [detailsApp, setDetailsApp] = useState<Appointment | null>(null);
   const [rescheduleApp, setRescheduleApp] = useState<Appointment | null>(null);
   const [showBreakModal, setShowBreakModal] = useState(false);
+  const [statusModal, setStatusModal] = useState<{ isOpen: boolean, appId: string, oldStatus: string, newStatus: string }>({ isOpen: false, appId: '', oldStatus: '', newStatus: '' });
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [currentOpForBreak, setCurrentOpForBreak] = useState<Operator | null>(null);
   const [newBreakForm, setNewBreakForm] = useState({ start: '', end: '', day: '' });
   
@@ -62,7 +64,7 @@ const PosAtendimento = () => {
   useEffect(() => {
     const loadNegotiators = async () => {
       try {
-        const response = await fetch('http://localhost:3000/negotiators');
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/negotiators`);
         if (response.ok) {
           const data = await response.json();
           setNegotiators(data);
@@ -306,23 +308,46 @@ const PosAtendimento = () => {
     });
   };
 
-  const handleUpdateStatus = async (appId: string, newStatus: string) => {
-    setConfirmModal({
+  const handleUpdateStatus = (appId: string, newStatus: string) => {
+    const app = appointments.find(a => a.id === appId);
+    if (!app) return;
+    setStatusModal({
       isOpen: true,
-      title: 'Alterar Status',
-      message: `Deseja realmente alterar o status deste agendamento para "${newStatus}"?`,
-      onConfirm: async () => {
-        try {
-          await appointmentService.updateAppointmentStatus(appId, newStatus, profile?.id);
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
-          refreshAppointments();
-          setNotifModal({ isOpen: true, type: 'success', title: 'Status Atualizado', message: `O agendamento agora está como ${newStatus}.`, copyText: '' });
-        } catch (err: any) {
-          setConfirmModal(prev => ({ ...prev, isOpen: false }));
-          setNotifModal({ isOpen: true, type: 'error', title: 'Erro', message: err.message || 'Falha ao atualizar.', copyText: '' });
-        }
-      }
+      appId,
+      oldStatus: app.status,
+      newStatus
     });
+  };
+
+  const handleConfirmStatusChange = async (comment: string) => {
+    setIsUpdatingStatus(true);
+    try {
+      await appointmentService.updateAppointmentStatus(
+        statusModal.appId, 
+        statusModal.newStatus, 
+        profile?.id,
+        comment
+      );
+      setStatusModal(prev => ({ ...prev, isOpen: false }));
+      refreshAppointments();
+      setNotifModal({ 
+        isOpen: true, 
+        type: 'success', 
+        title: 'Status Atualizado', 
+        message: `O agendamento agora está como ${statusModal.newStatus}.`, 
+        copyText: '' 
+      });
+    } catch (err: any) {
+      setNotifModal({ 
+        isOpen: true, 
+        type: 'error', 
+        title: 'Erro', 
+        message: err.message || 'Falha ao atualizar.', 
+        copyText: '' 
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
   };
   const handleUpdateOperator = async () => {
     if (!editingOp) return;
@@ -476,7 +501,8 @@ const PosAtendimento = () => {
                       { value: 'Pendente', label: 'Pendente' },
                       { value: 'Em andamento', label: 'Em andamento' },
                       { value: 'Concluído', label: 'Concluído' },
-                      { value: 'Não realizado', label: 'Não realizado' }
+                      { value: 'Não realizado', label: 'Não realizado' },
+                      { value: 'Não Tratado', label: 'Não Tratado' }
                     ]}
                     placeholder="Todos Status"
                     icon={<Filter className="w-4 h-4" />}
@@ -689,11 +715,12 @@ const PosAtendimento = () => {
                                   onChange={e => handleUpdateStatus(app.id, e.target.value)} 
                                   className="w-fit bg-transparent text-[8px] font-black uppercase outline-none text-ocl-primary/20 hover:text-brand-accent transition-all cursor-pointer"
                                 >
-                                  <option value="Pendente">Alterar Status</option>
+                                  <option value="" disabled>Alterar Status</option>
                                   <option value="Pendente">Pendente</option>
                                   <option value="Em andamento">Em andamento</option>
                                   <option value="Concluído">Concluído</option>
                                   <option value="Não realizado">Não realizado</option>
+                                  <option value="Não Tratado">Não Tratado</option>
                                 </select>
                               </div>
                             </td>
@@ -1083,6 +1110,15 @@ const PosAtendimento = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <StatusChangeModal
+        isOpen={statusModal.isOpen}
+        onClose={() => setStatusModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={handleConfirmStatusChange}
+        oldStatus={statusModal.oldStatus}
+        newStatus={statusModal.newStatus}
+        isLoading={isUpdatingStatus}
+      />
     </div>
   );
 };

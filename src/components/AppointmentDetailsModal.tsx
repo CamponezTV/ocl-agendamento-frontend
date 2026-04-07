@@ -91,6 +91,48 @@ Valores: R$ ${appointment.agreed_values}`;
               <InfoRow icon={UserCheck} label="Recuperador" value={appointment.recovery_name} />
               <InfoRow icon={DollarSign} label="Valores Acordados" value={`R$ ${appointment.agreed_values}`} />
 
+              {/* Histórico / Timeline */}
+              {appointment.appointment_history && appointment.appointment_history.length > 0 && (
+                <div className="pt-6 space-y-4">
+                  <div className="flex items-center gap-2 px-1">
+                    <Clock className="w-3.5 h-3.5 text-brand-accent shadow-[0_0_8px_rgba(56,189,248,0.3)]" />
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-ocl-primary/40">Histórico de Alterações</h3>
+                  </div>
+                  
+                  <div className="space-y-4 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[1px] before:bg-ocl-primary/5">
+                    {appointment.appointment_history.map((h, i) => (
+                      <div key={h.id} className="relative pl-8 group">
+                        <div className="absolute left-0 top-1.5 w-[23px] h-[23px] rounded-full bg-white border border-ocl-primary/10 flex items-center justify-center z-10 transition-all group-hover:border-brand-accent/30 group-hover:scale-110 shadow-sm">
+                          <div className={`w-1.5 h-1.5 rounded-full ${i === 0 ? 'bg-brand-accent animate-pulse shadow-[0_0_6px_rgba(56,189,248,0.6)]' : 'bg-ocl-primary/20'}`} />
+                        </div>
+                        
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-ocl-primary leading-none uppercase tracking-tight">
+                              {h.old_status ? `${h.old_status} → ${h.new_status}` : `Início: ${h.new_status}`}
+                            </span>
+                            <span className="text-[8px] font-bold text-brand-text/20 uppercase tracking-widest leading-none">
+                              {new Date(h.created_at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          
+                          {h.details?.comment && (
+                            <div className="mt-1 p-3 bg-brand-bg rounded-xl border border-ocl-primary/5 italic text-xs font-medium text-brand-text/60 leading-relaxed relative">
+                              <div className="absolute -left-1.5 top-2 w-3 h-3 bg-brand-bg border-l border-t border-ocl-primary/5 rotate-[-45deg]" />
+                              "{h.details.comment}"
+                            </div>
+                          )}
+                          
+                          <p className="text-[8px] font-black text-brand-text/20 uppercase tracking-widest mt-0.5 ml-1">
+                            Por: {h.users?.name || h.users?.email?.split('@')[0] || 'Sistema'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="pt-4 flex gap-3">
                 <button
                   onClick={handleCopy}

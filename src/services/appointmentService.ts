@@ -1,6 +1,6 @@
 import { authFetch } from './apiClient';
 
-const API_URL = 'http://localhost:3000';
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 export interface Appointment {
   id: string;
@@ -25,6 +25,18 @@ export interface Appointment {
     full_name: string;
     role: string;
   } | null;
+  appointment_history?: {
+    id: string;
+    action_type: string;
+    old_status: string | null;
+    new_status: string;
+    details: any;
+    created_at: string;
+    users?: {
+      name: string;
+      email: string;
+    } | null;
+  }[];
 }
 
 export const appointmentService = {
@@ -48,11 +60,11 @@ export const appointmentService = {
     return response.json();
   },
 
-  async updateAppointmentStatus(id: string, status: string, changed_by?: string | null) {
+  async updateAppointmentStatus(id: string, status: string, changed_by?: string | null, comment?: string) {
     const response = await authFetch(`${API_URL}/status/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status, changed_by }),
+      body: JSON.stringify({ status, changed_by, comment }),
     });
 
     if (!response.ok) {
@@ -77,6 +89,10 @@ export const appointmentService = {
       });
     }
     const response = await authFetch(`${API_URL}/appointments?${params.toString()}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erro ao buscar agendamentos');
+    }
     return response.json();
   },
 

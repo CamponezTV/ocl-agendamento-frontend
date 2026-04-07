@@ -37,6 +37,14 @@ export const StatusBadge = ({ status }: StatusBadgeProps) => {
           border: 'border-rose-200/50',
           label: 'Não realizado'
         };
+      case 'Não Tratado':
+        return {
+          dot: 'bg-slate-500 shadow-[0_0_8px_rgba(100,116,139,0.5)]',
+          bg: 'bg-slate-50/80',
+          text: 'text-slate-700',
+          border: 'border-slate-200/50',
+          label: 'Não Tratado'
+        };
       default:
         return {
           dot: 'bg-slate-400',

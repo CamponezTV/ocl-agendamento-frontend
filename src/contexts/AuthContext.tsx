@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
+import { authFetch } from '../services/apiClient';
 
 export interface Profile {
   id: string;
   full_name: string;
-  role: 'admin' | 'negociador';
+  role: 'admin' | 'operador' | 'negociador';
   created_at: string;
 }
 
@@ -31,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { session } } = await supabase.auth.getSession();
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await fetchProfile();
       }
       setLoading(false);
     };
@@ -46,7 +47,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         // Fetch profile in parallel or at least don't block the main loading state
-        fetchProfile(session.user.id);
+        fetchProfile();
       } else {
         setProfile(null);
       }
@@ -60,15 +61,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async () => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-      
-      if (error) throw error;
+      const response = await authFetch(`${import.meta.env.VITE_API_BASE_URL}/admin/me`);
+      if (!response.ok) {
+        throw new Error('Falha ao buscar perfil local');
+      }
+      const data = await response.json();
       setProfile(data as Profile);
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -79,8 +78,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await supabase.auth.signOut();
   };
 
-  const isAdmin = profile?.role === 'admin';
-  const isNegociador = profile?.role === 'negociador' || (!user && window.location.pathname.startsWith('/negociador'));
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'operador';
+  const isNegociador = !isAdmin;
 
   // Perfil padrão para acesso sem login (Negociador Padrão)
   const effectiveProfile = profile || (!user && window.location.pathname.startsWith('/negociador') ? {

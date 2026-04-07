@@ -12,7 +12,6 @@ const LoginPage: React.FC = () => {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/negociador';
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -20,15 +19,8 @@ const LoginPage: React.FC = () => {
     setError(null);
 
     try {
-      let finalEmail = identifier;
+      let finalEmail = identifier.trim();
       
-      // Mapeamento inteligente para o seu acesso
-      if (identifier.toLowerCase() === 'arthur') {
-        finalEmail = 'arthurcamponez2020@gmail.com';
-      } else if (!identifier.includes('@')) {
-        finalEmail = `${identifier}@gmail.com`;
-      }
-
       console.log('Tentando login para:', finalEmail);
       const { data, error: authError } = await supabase.auth.signInWithPassword({
         email: finalEmail,
@@ -45,28 +37,8 @@ const LoginPage: React.FC = () => {
       }
 
       console.log('Login realizado com sucesso. ID:', data.user.id);
-
-      // Fetch profile to decide navigation
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
       
-      if (profileError) {
-        console.warn('Perfil não encontrado ou erro ao buscar:', profileError);
-      }
-
-      const role = profile?.role || 'negociador';
-      console.log('Role detectada:', role);
-
-      if (role === 'admin') {
-        console.log('Navegando para Gestão...');
-        navigate('/pos-atendimento');
-      } else {
-        console.log('Navegando para Negociador:', from);
-        navigate(from);
-      }
+      navigate('/pos-atendimento');
     } catch (err: any) {
       console.error('Catch handleLogin:', err);
       const msg = err.message || '';
@@ -114,7 +86,7 @@ const LoginPage: React.FC = () => {
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-base font-normal text-slate-900 outline-none focus:border-[#003366] transition-all placeholder:text-slate-400"
-                    placeholder="Ex: arthur"
+                    placeholder="Usuario"
                   />
                </div>
 

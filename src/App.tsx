@@ -72,7 +72,7 @@ function Navbar() {
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black leading-none text-white uppercase tracking-wider">{profile?.full_name}</span>
                   <span className="text-[8px] font-bold leading-none text-white/40 uppercase tracking-widest mt-1">
-                    {profile?.role === 'admin' ? 'Administrador' : 'Negociador'}
+                    {profile?.role === 'admin' ? 'Administrador' : profile?.role === 'operador' ? 'Pós-atendente' : 'Negociador'}
                   </span>
                 </div>
               </div>

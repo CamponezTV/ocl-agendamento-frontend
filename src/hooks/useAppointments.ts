@@ -3,16 +3,16 @@ import { appointmentService } from '../services/appointmentService';
 import type { Appointment } from '../services/appointmentService';
 import { getVisitorId } from '../utils/visitorId';
 
-export const useAppointments = () => {
+export const useAppointments = (initialFilters?: any, options?: { skipAutoFetch?: boolean }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (fetchFilters?: any) => {
     try {
       setLoading(true);
-      const visitorId = getVisitorId();
-      const data = await appointmentService.fetchAppointments({ session_id: visitorId });
+      const activeFilters = fetchFilters !== undefined ? fetchFilters : initialFilters;
+      const data = await appointmentService.fetchAppointments(activeFilters);
       setAppointments(data || []);
     } catch (err: any) {
       setError(err.message);
@@ -55,7 +55,9 @@ export const useAppointments = () => {
   };
 
   useEffect(() => {
-    fetchAppointments();
+    if (!options?.skipAutoFetch) {
+      fetchAppointments();
+    }
   }, []);
 
   return {

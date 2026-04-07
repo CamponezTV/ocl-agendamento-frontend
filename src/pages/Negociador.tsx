@@ -18,7 +18,7 @@ import { getVisitorId } from '../utils/visitorId';
 
 const Negociador = () => {
   const { profile } = useAuth();
-  const { createAppointment } = useAppointments();
+  const { createAppointment } = useAppointments(undefined, { skipAutoFetch: true });
   const { socket } = useSocket();
 
   const [activeTab, setActiveTab] = useState<'booking' | 'history'>('booking');
@@ -107,6 +107,7 @@ const Negociador = () => {
 
   // Local Filter Logic
   const filteredHistory = useMemo(() => {
+    if (!Array.isArray(myAppointments)) return [];
     return myAppointments.filter(app => {
       const matchesSearch = searchTerm === '' || 
         app.responsible_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -427,7 +428,8 @@ const Negociador = () => {
                       { value: 'Pendente', label: 'Pendente' },
                       { value: 'Em andamento', label: 'Em andamento' },
                       { value: 'Concluído', label: 'Concluído' },
-                      { value: 'Não realizado', label: 'Não realizado' }
+                      { value: 'Não realizado', label: 'Não realizado' },
+                      { value: 'Não Tratado', label: 'Não Tratado' }
                     ]}
                     placeholder="Todos Status"
                     icon={<Filter className="w-4 h-4" />}
