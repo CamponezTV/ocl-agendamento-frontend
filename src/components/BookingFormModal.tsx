@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { m, AnimatePresence } from 'framer-motion';
-import { X, FileText, Phone, User, DollarSign, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { X, FileText, Phone, User, DollarSign, AlertCircle, Loader2 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useAuth } from '../contexts/AuthContext';
 

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { appointmentService } from '../services/appointmentService';
 import type { Appointment } from '../services/appointmentService';
-import { getVisitorId } from '../utils/visitorId';
 
 export const useAppointments = (initialFilters?: any, options?: { skipAutoFetch?: boolean }) => {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
