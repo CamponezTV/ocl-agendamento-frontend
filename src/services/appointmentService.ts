@@ -1,4 +1,4 @@
-import { supabase } from '../api/supabase';
+const API_URL = 'http://localhost:3000';
 
 export interface Appointment {
   id: string;
@@ -15,43 +15,56 @@ export interface Appointment {
 }
 
 export const appointmentService = {
-  async fetchAvailableSlots(date: string) {
-    const { data, error } = await supabase
-      .from('schedule_slots')
-      .select('*')
-      .eq('available', true)
-      .gte('start_time', `${date}T00:00:00`)
-      .lte('start_time', `${date}T23:59:59`);
-
-    if (error) throw error;
+  async fetchAvailableSlots() {
+    const response = await fetch(`${API_URL}/agenda`);
+    if (!response.ok) throw new Error('Erro ao buscar agenda');
+    const data = await response.json();
     return data;
   },
 
   async saveAppointment(data: Partial<Appointment>) {
-    const { data: appointment, error } = await supabase
-      .from('appointments')
-      .insert([
-        { 
-          ...data, 
-          status: data.status || 'Agendado'
-        }
-      ])
-      .select()
-      .single();
+    const response = await fetch(`${API_URL}/agendamento`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
 
-    if (error) throw error;
-    return appointment;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.details?.[0] || errorData.error || 'Erro ao salvar agendamento');
+    }
+    return response.json();
   },
 
   async updateAppointmentStatus(id: string, status: string) {
-    const { data, error } = await supabase
-      .from('appointments')
-      .update({ status })
-      .eq('id', id)
-      .select()
-      .single();
+    const response = await fetch(`${API_URL}/status/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
 
-    if (error) throw error;
-    return data;
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erro ao atualizar status');
+    }
+    return response.json();
+  },
+
+  async fetchAllAppointments() {
+    const response = await fetch(`${API_URL}/agenda`);
+    if (!response.ok) throw new Error('Erro ao buscar agendamentos');
+    return response.json();
+  },
+
+  async deleteAppointment(id: string) {
+    const response = await fetch(`${API_URL}/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erro ao excluir agendamento');
+    }
+    return response.json();
   }
 };
