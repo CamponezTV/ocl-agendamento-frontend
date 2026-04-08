@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, XCircle, X, Copy, Check } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
@@ -30,21 +30,20 @@ export const NotificationModal = ({ isOpen, onClose, type, title, message, copyT
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && onClose()}
         >
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.94, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden relative border border-white/20"
           >
-            {/* Header accent bar */}
             <div className={`h-1.5 w-full shrink-0 ${
               type === 'success' ? 'bg-brand-success' : 'bg-brand-danger'
             } bg-gradient-to-r ${
@@ -63,7 +62,7 @@ export const NotificationModal = ({ isOpen, onClose, type, title, message, copyT
                 <X className="w-5 h-5" />
               </button>
               
-              <motion.div
+              <m.div
                 initial={{ scale: 0, rotate: -10 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", damping: 12, stiffness: 200, delay: 0.1 }}
@@ -77,7 +76,7 @@ export const NotificationModal = ({ isOpen, onClose, type, title, message, copyT
                     <XCircle className="w-12 h-12 text-brand-danger" />
                   </div>
                 )}
-              </motion.div>
+              </m.div>
             </div>
 
             <div className="p-8 pt-6 text-center">
@@ -128,8 +127,8 @@ export const NotificationModal = ({ isOpen, onClose, type, title, message, copyT
                 </button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

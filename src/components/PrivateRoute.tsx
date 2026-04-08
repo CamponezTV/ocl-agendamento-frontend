@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
-  requiredRole?: 'admin' | 'negociador';
+  requiredRole?: 'admin' | 'operador' | 'negociador';
 }
 
 const PrivateRoute: React.FC<PrivateRouteProps> = ({ children, requiredRole }) => {

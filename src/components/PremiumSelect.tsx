@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Check, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 
 interface Option {
   value: string;
@@ -43,7 +43,6 @@ export const PremiumSelect = ({
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {/* Trigger */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 w-full bg-white/40 backdrop-blur-md border border-ocl-primary/10 rounded-2xl px-4 py-3 cursor-pointer hover:bg-white/60 transition-all group"
@@ -70,10 +69,9 @@ export const PremiumSelect = ({
         <ChevronDown className={`w-4 h-4 transition-transform duration-300 ${isOpen ? 'rotate-180 text-brand-accent' : 'text-brand-text/20'}`} />
       </div>
 
-      {/* Popover */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 5, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -104,7 +102,7 @@ export const PremiumSelect = ({
                 })
               )}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

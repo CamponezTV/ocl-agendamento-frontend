@@ -8,16 +8,17 @@ import { BookingFormModal } from '../components/BookingFormModal';
 import type { BookingFormData } from '../components/BookingFormModal';
 import { StatusBadge } from '../components/StatusBadge';
 import { CheckCircle2, Loader2, Sun, Sunset, Search, Filter, Clock, Eye, RotateCcw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { AppointmentDetailsModal } from '../components/AppointmentDetailsModal';
 import { PremiumDatePicker } from '../components/PremiumDatePicker';
 import { PremiumSelect } from '../components/PremiumSelect';
 
 import { useAuth } from '../contexts/AuthContext';
+import { getVisitorId } from '../utils/visitorId';
 
 const Negociador = () => {
   const { profile } = useAuth();
-  const { createAppointment } = useAppointments();
+  const { createAppointment } = useAppointments(undefined, { skipAutoFetch: true });
   const { socket } = useSocket();
 
   const [activeTab, setActiveTab] = useState<'booking' | 'history'>('booking');
@@ -26,7 +27,7 @@ const Negociador = () => {
   const getAllowedDays = () => {
     const days = [];
     let current = new Date();
-    while (days.length < 3) {
+    while (days.length < 5) {
       const dayOfWeek = current.getUTCDay();
       if (dayOfWeek !== 0) days.push(new Date(current));
       current.setDate(current.getDate() + 1);
@@ -35,11 +36,57 @@ const Negociador = () => {
   };
 
   const allowedDays = useMemo(() => getAllowedDays(), []);
+  
+  const [daysStatus, setDaysStatus] = useState<Record<string, { hasSlots: boolean, loaded: boolean }>>({});
+  
   const [selectedDate, setSelectedDate] = useState(allowedDays[0].toISOString().split('T')[0]);
   const [slots, setSlots] = useState<any[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
   const [showFormModal, setShowFormModal] = useState(false);
+
+  const refreshDayStatuses = async () => {
+    const statuses: Record<string, { hasSlots: boolean, loaded: boolean }> = {};
+    await Promise.all(
+      allowedDays.map(async (d) => {
+        const dateStr = d.toISOString().split('T')[0];
+        try {
+          const daySlots = await appointmentService.fetchAvailability(dateStr);
+          statuses[dateStr] = { hasSlots: daySlots.length > 0, loaded: true };
+        } catch {
+          statuses[dateStr] = { hasSlots: false, loaded: true };
+        }
+      })
+    );
+    return statuses;
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    refreshDayStatuses().then((statuses) => {
+      if (isMounted) {
+        setDaysStatus(statuses);
+        
+        const validWithSlots = allowedDays
+          .map(d => d.toISOString().split('T')[0])
+          .filter(ds => statuses[ds]?.hasSlots);
+        
+        setSelectedDate(prev => {
+          if (validWithSlots.length > 0 && !validWithSlots.slice(0, 3).includes(prev)) {
+            return validWithSlots[0];
+          }
+          return prev;
+        });
+      }
+    });
+    return () => { isMounted = false; };
+  }, [allowedDays]);
+
+  const validDatesWithSlots = allowedDays
+    .map(d => d.toISOString().split('T')[0])
+    .filter(dateStr => daysStatus[dateStr]?.hasSlots);
+  const selectableDates = validDatesWithSlots.slice(0, 3);
+
 
   // States for History
   const [myAppointments, setMyAppointments] = useState<Appointment[]>([]);
@@ -60,6 +107,7 @@ const Negociador = () => {
 
   // Local Filter Logic
   const filteredHistory = useMemo(() => {
+    if (!Array.isArray(myAppointments)) return [];
     return myAppointments.filter(app => {
       const matchesSearch = searchTerm === '' || 
         app.responsible_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -97,12 +145,16 @@ const Negociador = () => {
 
   // Load history
   const loadHistory = async () => {
-    if (!profile?.id) return;
     try {
       setLoadingHistory(true);
-      const data = await appointmentService.fetchAppointments({
-        negociador_id: profile.id
-      });
+      const visitorId = getVisitorId();
+      const filters: any = { session_id: visitorId };
+      
+      if (profile?.id) {
+        filters.negociador_id = profile.id;
+      }
+
+      const data = await appointmentService.fetchAppointments(filters);
       setMyAppointments(data);
     } catch (err) {
       console.error(err);
@@ -113,7 +165,7 @@ const Negociador = () => {
 
   // Load all only on tab mount or login
   useEffect(() => {
-    if (activeTab === 'history' && profile?.id) {
+    if (activeTab === 'history') {
        loadHistory();
     }
   }, [activeTab, profile?.id]);
@@ -164,6 +216,7 @@ const Negociador = () => {
         appointment_date: dateObj.toISOString(),
         operador_id: selectedSlot.operatorId,
         negociador_id: formData.negociador_id,
+        session_id: getVisitorId(),
         status: 'Pendente'
       };
 
@@ -182,6 +235,11 @@ const Negociador = () => {
 
       handleSocketUpdate();
       setSelectedSlot(null);
+      
+      // Atualizar silenciosamente o calendário das abas para refletir se e quando o dia se esgotou
+      setTimeout(() => {
+        refreshDayStatuses().then(st => setDaysStatus(st));
+      }, 500);
     } catch (err: any) {
       setNotifModal({
         isOpen: true,
@@ -196,14 +254,13 @@ const Negociador = () => {
   return (
     <div className="min-h-screen p-8 bg-brand-bg text-brand-text">
       <div className="max-w-6xl mx-auto space-y-8 pt-4">
-        {/* Welcome Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-           <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-1">
+           <m.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="space-y-1">
              <h1 className="text-4xl font-black text-ocl-primary italic flex items-center gap-3">
                Olá, {profile?.full_name?.split(' ')[0] || 'Negociador'} 
              </h1>
              <p className="text-xs font-black text-brand-text/30 uppercase tracking-[0.3em] pl-1">Sistema de Agendamento OCL</p>
-           </motion.div>
+           </m.div>
 
            <div className="flex bg-white/50 backdrop-blur-sm border border-ocl-primary/10 p-1.5 rounded-2xl shadow-sm">
              <button 
@@ -223,25 +280,61 @@ const Negociador = () => {
 
         <AnimatePresence mode="wait">
           {activeTab === 'booking' ? (
-            <motion.div key="booking" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <m.div key="booking" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-6">
                 <div className="ocl-card p-6 border-l-4 border-l-brand-accent">
                   <div className="flex justify-between items-center mb-6">
                     <label className="text-[10px] font-black text-brand-text/30 uppercase tracking-widest">1. Selecione o Dia</label>
                     <span className="text-[10px] font-black text-brand-accent uppercase tracking-widest bg-brand-accent/10 px-2 py-1 rounded-md">{currentMonth}</span>
                   </div>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-5 gap-3">
                     {allowedDays.map((dateObj) => {
                       const dateStr = dateObj.toISOString().split('T')[0];
+                      const status = daysStatus[dateStr];
+                      const isLoaded = status?.loaded;
+                      const hasSlots = status?.hasSlots;
+                      
+                      const isSelectable = isLoaded && selectableDates.includes(dateStr);
+                      const isNoSlots = isLoaded && !hasSlots;
+                      const isBeyondLimit = isLoaded && hasSlots && !selectableDates.includes(dateStr);
+                      
                       const isActive = selectedDate === dateStr;
+
                       return (
                         <button
                           key={dateStr}
-                          onClick={() => setSelectedDate(dateStr)}
-                          className={`p-3 rounded-xl border transition-all flex flex-col items-center gap-1 ${isActive ? 'bg-ocl-primary border-ocl-primary text-white shadow-xl' : 'bg-white border-ocl-primary/5 text-ocl-primary hover:border-brand-accent/30'}`}
+                          onClick={() => isSelectable && setSelectedDate(dateStr)}
+                          disabled={!isSelectable}
+                          title={isNoSlots ? "Sem horários neste dia" : isBeyondLimit ? "Fora do limite de 3 dias operacionais" : ""}
+                          className={`relative p-3 rounded-2xl border transition-all flex flex-col items-center gap-1 overflow-hidden 
+                            ${!isLoaded ? 'bg-brand-bg animate-pulse border-transparent' : 
+                              isNoSlots ? 'bg-[#FFF5F5] border-brand-danger/10 opacity-70 cursor-not-allowed' :
+                              isBeyondLimit ? 'bg-brand-bg border-ocl-primary/5 opacity-50 cursor-not-allowed' :
+                              isActive ? 'bg-ocl-primary border-ocl-primary text-white shadow-xl scale-[1.02] z-10' : 
+                              'bg-white border-ocl-primary/5 text-ocl-primary hover:border-brand-accent/30 hover:shadow-md'}`}
                         >
-                          <span className={`text-[8px] font-black uppercase ${isActive ? 'text-white/40' : 'text-brand-text/30'}`}>{dayNamesShort[dateObj.getUTCDay()]}</span>
-                          <span className="text-lg font-black">{dateObj.getUTCDate()}</span>
+                          {!isLoaded ? (
+                             <div className="w-5 h-5 border-2 border-brand-accent/30 border-t-brand-accent rounded-full animate-spin my-2" />
+                          ) : (
+                            <>
+                              <span className={`text-[8px] font-black uppercase ${isActive ? 'text-white/40' : 
+                                isNoSlots ? 'text-brand-danger/40' : 
+                                'text-brand-text/30'}`}>{dayNamesShort[dateObj.getUTCDay()]}</span>
+                              <span className={`text-lg font-black ${isNoSlots ? 'text-brand-danger/30' : ''}`}>{dateObj.getUTCDate()}</span>
+                              
+                              {isNoSlots && (
+                                <div className="absolute top-1 right-1 text-brand-danger bg-brand-danger/10 p-1 rounded-full shadow-sm">
+                                  <Clock className="w-2.5 h-2.5" />
+                                </div>
+                              )}
+                              
+                              {isBeyondLimit && !isNoSlots && (
+                                <div className="absolute inset-0 bg-white/60 backdrop-blur-[1.5px] flex items-center justify-center">
+                                  <span className="text-[7.5px] font-black uppercase text-brand-text/30 tracking-widest px-1.5 py-0.5 bg-brand-bg rounded-md border border-ocl-primary/10">Limite</span>
+                                </div>
+                              )}
+                            </>
+                          )}
                         </button>
                       );
                     })}
@@ -313,10 +406,9 @@ const Negociador = () => {
                   Agendar Agora
                 </button>
               </div>
-            </motion.div>
+            </m.div>
           ) : (
-            <motion.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
-              {/* Filters Header */}
+            <m.div key="history" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-white border border-ocl-primary/10 rounded-3xl shadow-sm mb-8 relative z-40">
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-text/30" />
@@ -336,7 +428,8 @@ const Negociador = () => {
                       { value: 'Pendente', label: 'Pendente' },
                       { value: 'Em andamento', label: 'Em andamento' },
                       { value: 'Concluído', label: 'Concluído' },
-                      { value: 'Não realizado', label: 'Não realizado' }
+                      { value: 'Não realizado', label: 'Não realizado' },
+                      { value: 'Não Tratado', label: 'Não Tratado' }
                     ]}
                     placeholder="Todos Status"
                     icon={<Filter className="w-4 h-4" />}
@@ -350,10 +443,9 @@ const Negociador = () => {
                   />
                 </div>
                 
-                {/* Clear Filters Button */}
                 <AnimatePresence>
                   {(searchTerm || statusFilter || dateFilter) && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
@@ -370,12 +462,11 @@ const Negociador = () => {
                         <RotateCcw className="w-3.5 h-3.5" />
                         Limpar Filtros
                       </button>
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
               </div>
 
-              {/* Table */}
               <div className="ocl-card overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
@@ -423,7 +514,7 @@ const Negociador = () => {
                   </table>
                 </div>
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </div>

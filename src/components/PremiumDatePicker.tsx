@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 
 interface Props {
   value: string; // YYYY-MM-DD
@@ -71,7 +71,6 @@ export const PremiumDatePicker = ({ value, onChange, placeholder = 'Selecione um
 
   return (
     <div className={`relative ${className}`} ref={containerRef}>
-      {/* Trigger Button */}
       <div 
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-3 w-full bg-white/40 backdrop-blur-md border border-ocl-primary/10 rounded-2xl px-4 py-3 cursor-pointer hover:bg-white/60 transition-all group"
@@ -93,14 +92,13 @@ export const PremiumDatePicker = ({ value, onChange, placeholder = 'Selecione um
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <m.div
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 5, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
             style={{ zIndex: 1000 }}
             className="absolute top-full left-0 mt-2 w-72 bg-white border border-ocl-primary/10 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] p-4 origin-top"
           >
-            {/* Header */}
             <div className="flex items-center justify-between mb-4 px-1">
               <button 
                 onClick={handlePrevMonth}
@@ -126,7 +124,6 @@ export const PremiumDatePicker = ({ value, onChange, placeholder = 'Selecione um
               </button>
             </div>
 
-            {/* Days Grid */}
             <div className="grid grid-cols-7 gap-1 mb-2">
               {daysShort.map(d => (
                 <div key={d} className="text-[8px] font-black uppercase text-brand-text/30 text-center py-1">
@@ -160,7 +157,7 @@ export const PremiumDatePicker = ({ value, onChange, placeholder = 'Selecione um
                 );
               })}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

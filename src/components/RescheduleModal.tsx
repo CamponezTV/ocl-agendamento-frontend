@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, Calendar, Clock, User, Loader2, RefreshCw } from 'lucide-react';
 import { appointmentService } from '../services/appointmentService';
 import { operatorService } from '../services/operatorService';
 import type { Appointment } from '../services/appointmentService';
 import type { Operator } from '../services/operatorService';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Props {
   isOpen: boolean;
@@ -29,6 +30,7 @@ const getNext30Days = () => {
 
 export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Props) => {
   useBodyScrollLock(isOpen);
+  const { profile } = useAuth();
   const [selectedDate, setSelectedDate] = useState('');
   const [slots, setSlots] = useState<any[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<any>(null);
@@ -64,7 +66,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
 
   // Carregar slots disponíveis para a data selecionada
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!selectedDate || !isOpen) return;
     const load = async () => {
       setLoadingSlots(true);
       setSelectedSlot(null);
@@ -78,7 +80,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
       }
     };
     load();
-  }, [selectedDate]);
+  }, [selectedDate, isOpen]);
 
   const handleConfirm = async () => {
     if (!appointment) return;
@@ -105,7 +107,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
         operadorId = selectedOperatorId || null;
       }
 
-      await appointmentService.rescheduleAppointment(appointment.id, isoDate, operadorId);
+      await appointmentService.rescheduleAppointment(appointment.id, isoDate, operadorId, profile?.id);
       onSuccess();
       onClose();
     } catch (err: any) {
@@ -123,24 +125,22 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[8000] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && !submitting && onClose()}
         >
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.94, y: 16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 16 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            {/* Header accent bar */}
             <div className="h-1.5 w-full bg-gradient-to-r from-ocl-primary via-brand-accent to-ocl-primary shrink-0" />
 
-            {/* Header */}
             <div className="flex items-start justify-between p-8 pb-4 shrink-0">
               <div>
                 <h2 className="text-2xl font-black text-ocl-primary tracking-tight flex items-center gap-2">
@@ -158,15 +158,12 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
               </button>
             </div>
 
-            {/* Scrollable body */}
             <div className="overflow-y-auto overflow-x-hidden px-8 pb-8 space-y-6 custom-scrollbar">
-              {/* Data Strip Container */}
               <div className="relative -mx-8 pt-4">
                 <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2 px-8">
                   <Calendar className="w-3 h-3" /> Selecione a Nova Data
                 </label>
                 
-                {/* Modern CSS Mask for Fade Edge - Eliminates 'flash' overlays */}
                 <div 
                   className="relative select-none overflow-hidden"
                   ref={constraintsRef}
@@ -178,7 +175,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                   onMouseDown={(e) => (e.currentTarget.style.cursor = 'grabbing')}
                   onMouseUp={(e) => (e.currentTarget.style.cursor = 'grab')}
                 >
-                  <motion.div 
+                  <m.div 
                     drag="x"
                     dragConstraints={constraintsRef}
                     dragElastic={0.15}
@@ -193,7 +190,7 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                       const isActive = selectedDate === date;
 
                       return (
-                        <motion.button
+                        <m.button
                           key={date}
                           onTap={() => setSelectedDate(date)}
                           whileHover={{ y: -2 }}
@@ -213,14 +210,13 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                           <span className={`text-[10px] font-bold uppercase ${isActive ? 'text-white/40' : 'text-brand-text/20'}`}>
                             {monthName}
                           </span>
-                        </motion.button>
+                        </m.button>
                       );
                     })}
-                  </motion.div>
+                  </m.div>
                 </div>
               </div>
 
-              {/* Slots */}
               <div>
                 <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-3">
                   <Clock className="w-3 h-3" /> Horário Disponível
@@ -278,7 +274,6 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                 )}
               </div>
 
-              {/* Operador manual (se não selecionar slot) */}
               {!selectedSlot && (
                 <div>
                   <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-3">
@@ -312,7 +307,6 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                 </p>
               )}
 
-              {/* Actions */}
               <div className="flex gap-3">
                 <button
                   onClick={() => !submitting && onClose()}
@@ -338,8 +332,8 @@ export const RescheduleModal = ({ isOpen, appointment, onClose, onSuccess }: Pro
                 </button>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   );

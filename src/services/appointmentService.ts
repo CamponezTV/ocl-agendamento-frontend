@@ -1,4 +1,6 @@
-const API_URL = 'http://localhost:3000';
+import { authFetch } from './apiClient';
+
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 export interface Appointment {
   id: string;
@@ -13,6 +15,7 @@ export interface Appointment {
   agreed_values: string;
   appointment_date: string;
   slot_id?: string | null;
+  session_id?: string | null;
   created_at?: string;
   users?: {
     name: string;
@@ -22,17 +25,29 @@ export interface Appointment {
     full_name: string;
     role: string;
   } | null;
+  appointment_history?: {
+    id: string;
+    action_type: string;
+    old_status: string | null;
+    new_status: string;
+    details: any;
+    created_at: string;
+    users?: {
+      name: string;
+      email: string;
+    } | null;
+  }[];
 }
 
 export const appointmentService = {
   async fetchAvailability(date: string) {
-    const response = await fetch(`${API_URL}/disponibilidade?date=${date}`);
+    const response = await authFetch(`${API_URL}/disponibilidade?date=${date}`);
     if (!response.ok) throw new Error('Erro ao buscar disponibilidade');
     return response.json();
   },
 
   async saveAppointment(data: Partial<Appointment>) {
-    const response = await fetch(`${API_URL}/agendamento`, {
+    const response = await authFetch(`${API_URL}/agendamento`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -45,11 +60,11 @@ export const appointmentService = {
     return response.json();
   },
 
-  async updateAppointmentStatus(id: string, status: string) {
-    const response = await fetch(`${API_URL}/status/${id}`, {
+  async updateAppointmentStatus(id: string, status: string, changed_by?: string | null, comment?: string) {
+    const response = await authFetch(`${API_URL}/status/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, changed_by, comment }),
     });
 
     if (!response.ok) {
@@ -62,6 +77,7 @@ export const appointmentService = {
   async fetchAppointments(filters?: {
     status?: string;
     negociador_id?: string;
+    session_id?: string;
     search?: string;
     startDate?: string;
     endDate?: string;
@@ -72,7 +88,11 @@ export const appointmentService = {
         if (value) params.append(key, value);
       });
     }
-    const response = await fetch(`${API_URL}/appointments?${params.toString()}`);
+    const response = await authFetch(`${API_URL}/appointments?${params.toString()}`);
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Erro ao buscar agendamentos');
+    }
     return response.json();
   },
 
@@ -81,7 +101,7 @@ export const appointmentService = {
   },
 
   async deleteAppointment(id: string) {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await authFetch(`${API_URL}/${id}`, {
       method: 'DELETE',
     });
 
@@ -92,11 +112,11 @@ export const appointmentService = {
     return response.json();
   },
 
-  async rescheduleAppointment(id: string, appointment_date: string, operador_id?: string | null) {
-    const response = await fetch(`${API_URL}/agendamento/${id}`, {
+  async rescheduleAppointment(id: string, appointment_date: string, operador_id?: string | null, changed_by?: string | null) {
+    const response = await authFetch(`${API_URL}/agendamento/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appointment_date, operador_id }),
+      body: JSON.stringify({ appointment_date, operador_id, changed_by }),
     });
 
     if (!response.ok) {

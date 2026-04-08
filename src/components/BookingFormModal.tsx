@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect, useRef } from 'react';
+import { m, AnimatePresence } from 'framer-motion';
 import { X, FileText, Phone, User, DollarSign, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,6 +38,10 @@ const formatPhone = (value: string) => {
   return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
 };
 
+const formatContract = (value: string) => {
+  return value.replace(/\D/g, '').slice(0, 11); // Somente números e no máximo 11 dígitos
+};
+
 export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, onConfirm }: BookingFormModalProps) => {
   useBodyScrollLock(isOpen);
   const { profile } = useAuth();
@@ -51,11 +55,60 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
   });
   const [errors, setErrors] = useState<FieldError>({});
   const [loading, setLoading] = useState(false);
+  const [fixsiUsers, setFixsiUsers] = useState<string[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<string[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [isFetchingUsers, setIsFetchingUsers] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Carregar usuários da Fixsi
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        setIsFetchingUsers(true);
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL.replace('/admin', '')}/fixsi-users`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.users && Array.isArray(data.users)) {
+            setFixsiUsers(data.users);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao buscar usuários da Fixsi:', err);
+      } finally {
+        setIsFetchingUsers(false);
+      }
+    };
+    if (isOpen) fetchUsers();
+  }, [isOpen]);
+
+  // Fechar dropdown ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Filtrar usuários conforme digita
+  useEffect(() => {
+    if (form.recovery_name.trim() === '') {
+      setFilteredUsers([]);
+      return;
+    }
+    const filtered = fixsiUsers.filter(user => 
+      user.toLowerCase().includes(form.recovery_name.toLowerCase())
+    ).slice(0, 10); // Mostrar apenas os 10 primeiros para manter a performance
+    setFilteredUsers(filtered);
+  }, [form.recovery_name, fixsiUsers]);
 
   const validate = (): boolean => {
     const newErrors: FieldError = {};
 
-    if (!form.contract.trim()) newErrors.contract = 'Contrato é obrigatório.';
+    if (form.contract.length !== 11) newErrors.contract = 'Contrato deve ter 11 dígitos.';
     
     const phoneDigits = form.phone.replace(/\D/g, '');
     if (phoneDigits.length !== 11) newErrors.phone = 'Telefone deve ter 11 dígitos.';
@@ -66,7 +119,11 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
       newErrors.responsible_name = 'Nome do responsável é obrigatório para Terceiro.';
     }
 
-    if (!form.recovery_name.trim()) newErrors.recovery_name = 'Nome do recuperador é obrigatório.';
+    if (!form.recovery_name.trim()) {
+      newErrors.recovery_name = 'Nome do recuperador é obrigatório.';
+    } else if (fixsiUsers.length > 0 && !fixsiUsers.includes(form.recovery_name)) {
+      newErrors.recovery_name = 'Por favor, selecione um recuperador válido na lista.';
+    }
 
     if (!form.agreed_values.trim()) newErrors.agreed_values = 'Valores acordados são obrigatórios.';
 
@@ -108,24 +165,22 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <m.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-ocl-dark/80 backdrop-blur-md z-[8000] flex items-center justify-center p-4"
           onClick={(e) => e.target === e.currentTarget && handleClose()}
         >
-          <motion.div
+          <m.div
             initial={{ opacity: 0, scale: 0.94, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.94, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
             className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
           >
-            {/* Header accent bar */}
             <div className="h-1.5 w-full bg-gradient-to-r from-ocl-primary via-brand-accent to-ocl-primary shrink-0" />
 
-            {/* Header */}
             <div className="flex items-start justify-between p-8 pb-0 shrink-0">
               <div>
                 <h2 className="text-2xl font-black text-ocl-primary tracking-tight">Dados do Agendamento</h2>
@@ -140,9 +195,7 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
               </button>
             </div>
 
-            {/* Scrollable area */}
             <div className="flex-1 overflow-y-auto custom-scrollbar">
-              {/* Slot summary pill */}
               {selectedSlot && (
                 <div className="mx-8 mt-5 p-4 rounded-2xl bg-ocl-primary/5 border border-ocl-primary/10 flex items-center justify-between">
                   <div>
@@ -156,10 +209,8 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                 </div>
               )}
 
-              {/* Form */}
               <div className="p-8 space-y-5">
 
-                {/* Contrato */}
                 <div>
                   <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2">
                     <FileText className="w-3 h-3" /> Número do Contrato
@@ -167,9 +218,11 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                   <input
                     id="booking-contract"
                     type="text"
+                    inputMode="numeric"
+                    maxLength={11}
                     value={form.contract}
-                    onChange={e => { setForm(f => ({ ...f, contract: e.target.value })); setErrors(er => ({ ...er, contract: undefined })); }}
-                    placeholder="Ex: CTR-123456"
+                    onChange={e => { setForm(f => ({ ...f, contract: formatContract(e.target.value) })); setErrors(er => ({ ...er, contract: undefined })); }}
+                    placeholder="Contrato (11 dígitos)"
                     className={`w-full bg-brand-bg border rounded-2xl px-5 py-3.5 text-sm font-bold text-ocl-primary placeholder:font-normal placeholder:text-brand-text/30 focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent outline-none transition-all ${errors.contract ? 'border-brand-danger' : 'border-ocl-primary/10'}`}
                   />
                   {errors.contract && (
@@ -177,7 +230,6 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                   )}
                 </div>
 
-                {/* Telefone */}
                 <div>
                   <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2">
                     <Phone className="w-3 h-3" /> Telefone (com DDD)
@@ -195,25 +247,67 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                   )}
                 </div>
 
-                {/* Nome do Recuperador */}
-                <div>
+                <div className="relative" ref={dropdownRef}>
                   <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2">
                     <User className="w-3 h-3" /> Nome do Recuperador
                   </label>
-                  <input
-                    id="booking-recovery-name"
-                    type="text"
-                    value={form.recovery_name}
-                    onChange={e => { setForm(f => ({ ...f, recovery_name: e.target.value })); setErrors(er => ({ ...er, recovery_name: undefined })); }}
-                    placeholder="Nome de quem realizou a negociação"
-                    className={`w-full bg-brand-bg border rounded-2xl px-5 py-3.5 text-sm font-bold text-ocl-primary placeholder:font-normal placeholder:text-brand-text/30 focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent outline-none transition-all ${errors.recovery_name ? 'border-brand-danger' : 'border-ocl-primary/10'}`}
-                  />
+                  <div className="relative group">
+                    <input
+                      id="booking-recovery-name"
+                      type="text"
+                      autoComplete="off"
+                      value={form.recovery_name}
+                      onFocus={() => setShowDropdown(true)}
+                      onChange={e => { 
+                        setForm(f => ({ ...f, recovery_name: e.target.value })); 
+                        setErrors(er => ({ ...er, recovery_name: undefined }));
+                        setShowDropdown(true);
+                      }}
+                      placeholder="Pesquise o nome do recuperador..."
+                      className={`w-full bg-brand-bg border rounded-2xl px-5 py-3.5 text-sm font-bold text-ocl-primary placeholder:font-normal placeholder:text-brand-text/30 focus:ring-4 focus:ring-brand-accent/10 focus:border-brand-accent outline-none transition-all ${errors.recovery_name ? 'border-brand-danger' : 'border-ocl-primary/10'}`}
+                    />
+                    {isFetchingUsers && (
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                        <Loader2 className="w-4 h-4 text-brand-accent animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  <AnimatePresence>
+                    {showDropdown && filteredUsers.length > 0 && (
+                      <m.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 5, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute z-[100] w-full left-0 bg-white/80 backdrop-blur-xl border border-ocl-primary/10 rounded-2xl shadow-2xl shadow-ocl-primary/20 overflow-hidden max-h-[250px] overflow-y-auto custom-scrollbar"
+                      >
+                        <div className="p-2 space-y-1">
+                          {filteredUsers.map((user, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setForm(f => ({ ...f, recovery_name: user }));
+                                setShowDropdown(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-bold text-ocl-primary hover:bg-ocl-primary hover:text-white transition-all flex items-center gap-3 group/item"
+                            >
+                              <div className="w-8 h-8 rounded-full bg-ocl-primary/5 flex items-center justify-center text-[10px] group-hover/item:bg-white/20">
+                                {user.split(' ').map(n => n[0]).join('').slice(0,2).toUpperCase()}
+                              </div>
+                              {user}
+                            </button>
+                          ))}
+                        </div>
+                      </m.div>
+                    )}
+                  </AnimatePresence>
+
                   {errors.recovery_name && (
                     <p className="text-brand-danger text-[10px] font-bold mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.recovery_name}</p>
                   )}
                 </div>
 
-                {/* Tipo de Responsável */}
                 <div>
                   <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2">
                     <User className="w-3 h-3" /> Tipo de Responsável
@@ -240,10 +334,9 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                   )}
                 </div>
 
-                {/* Nome do Responsável — só aparece se Terceiro */}
                 <AnimatePresence>
                   {form.responsible_type === 'Terceiro' && (
-                    <motion.div
+                    <m.div
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
@@ -264,11 +357,10 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                       {errors.responsible_name && (
                         <p className="text-brand-danger text-[10px] font-bold mt-1.5 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.responsible_name}</p>
                       )}
-                    </motion.div>
+                    </m.div>
                   )}
                 </AnimatePresence>
 
-                {/* Valores Acordados */}
                 <div>
                   <label className="text-[10px] font-black text-brand-text/40 uppercase tracking-widest flex items-center gap-1.5 mb-2">
                     <DollarSign className="w-3 h-3" /> Valores Acordados
@@ -288,7 +380,6 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                   )}
                 </div>
 
-                {/* Actions */}
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={handleClose}
@@ -316,8 +407,8 @@ export const BookingFormModal = ({ isOpen, selectedDate, selectedSlot, onClose, 
                 </div>
               </div>
             </div>
-          </motion.div>
-        </motion.div>
+          </m.div>
+        </m.div>
       )}
     </AnimatePresence>
   );
