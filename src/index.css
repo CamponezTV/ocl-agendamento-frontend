@@ -1,14 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ocl-primary: #002244;
-  --color-ocl-secondary: #003366;
-  --color-ocl-accent: #00aaff;
-  --color-zinc-950: #050505;
-  --color-zinc-900: #0a0a0a;
+  --color-ocl-primary: #003366;
+  --color-ocl-secondary: #004990;
+  --color-ocl-dark: #001a33;
+  --color-ocl-hover: #002244;
+  
+  --color-brand-bg: #F1F5F9;
+  --color-brand-card: #FFFFFF;
+  --color-brand-text: #1E293B;
+  --color-brand-accent: #0066CC;
+  --color-brand-success: #10B981;
+  --color-brand-danger: #EF4444;
   
   --radius-xl: 1rem;
   --radius-2xl: 1.5rem;
+  
+  --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
 }
 
 :root {
@@ -17,8 +25,8 @@
   font-weight: 400;
 
   color-scheme: light;
-  color: #f8fafc;
-  background-color: var(--color-zinc-950);
+  color: var(--color-brand-text);
+  background-color: var(--color-brand-bg);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -30,10 +38,31 @@ body {
   margin: 0;
   min-height: 100vh;
   overflow-x: hidden;
+  background-color: var(--color-brand-bg);
 }
 
 #root {
   width: 100%;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-brand-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-ocl-primary);
+  border-radius: 10px;
+  border: 2px solid var(--color-brand-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-brand-accent);
 }
 
 .page-transition {
@@ -46,14 +75,16 @@ body {
 }
 
 .ocl-card {
-  background-color: var(--color-zinc-900);
-  border: 1px solid #1e293b;
+  background-color: var(--color-brand-card);
+  border: 1px solid rgba(0, 51, 102, 0.08);
   border-radius: var(--radius-xl);
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--shadow-premium);
 }
 
 .ocl-card:hover {
-  border-color: var(--color-ocl-accent);
+  border-color: var(--color-brand-accent);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
 }
 
 .ocl-button {
@@ -65,9 +96,24 @@ body {
   transition: all 0.2s ease;
   cursor: pointer;
   border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
 }
 
 .ocl-button:hover {
-  background-color: var(--color-ocl-secondary);
+  background-color: var(--color-ocl-hover);
   transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 51, 102, 0.2);
+}
+
+.ocl-button:active {
+  transform: translateY(0);
+}
+
+.ocl-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
