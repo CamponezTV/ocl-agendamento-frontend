@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { supabase } from '../../lib/supabaseClient';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { m } from 'framer-motion';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
@@ -11,7 +11,6 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   
   const navigate = useNavigate();
-  const location = useLocation();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
